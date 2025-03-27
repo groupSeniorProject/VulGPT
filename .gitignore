@@ -7,3 +7,7 @@ llm.py
 tester.py
 
 .env
+
+__pycache__
+
+config

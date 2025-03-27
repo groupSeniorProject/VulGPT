@@ -5,7 +5,7 @@ import plotly.express as px
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 # from langchain_community.graphs import Neo4jGraph
-# import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt   
 
 load_dotenv(override=True)
 
@@ -25,10 +25,14 @@ def run():
     st.title("VulGPT")
 
     if driver is not None:
-        query = execute_query("MATCH (n:Vulnerability) RETURN n.package_name AS package_name")
+        package_name = execute_query("MATCH (n:Vulnerability) RETURN n.package_name AS package_name")
+        query = execute_query("MATCH (n:Vulnerability) RETURN n as Vulnerability")
+        st.dataframe(query)
         df = pd.DataFrame(query)
+        df_pn = pd.DataFrame(package_name)
+        st.write(f"Total: {df['Vulnerability'].count()}")
 
-        package_name_count = df['package_name'].value_counts()
+        package_name_count = df_pn['package_name'].value_counts()
         fig_pie = px.pie(package_name_count,
                          values=package_name_count.values,
                          names=package_name_count.index,
