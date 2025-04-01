@@ -11,3 +11,7 @@ tester.py
 __pycache__
 
 config
+
+scrape.py
+
+chromedriver.exe
