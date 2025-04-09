@@ -15,3 +15,5 @@ config
 scrape.py
 
 chromedriver.exe
+
+temp

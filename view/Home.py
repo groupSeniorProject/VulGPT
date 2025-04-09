@@ -108,26 +108,26 @@ def run():
                 st.write(search_results(query, text_search))
 
         with tb3: 
-            total_github = get_total_node_vulns(f"""MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
-WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
-RETURN count(v.id) as total_nodes """, "total_nodes")
+            total_github = get_total_node_vulns(f"""
+            MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+            WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+            RETURN count(v.id) as total_nodes """, "total_nodes")
+
             st.write(f"Total: {total_github}")
 
+            query1 = execute_query1(f"""
+            MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+            WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+            RETURN v.id as ID, 
+            g.name,
+            v.minimal_affected_versions,
+            g.lang_breakdown
+            LIMIT 50""")
 
-            query1 = execute_query1(f"""MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
-WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
-RETURN v.id as ID, 
-g.name,
-v.minimal_affected_versions,
-g.lang_breakdown
-limit 50 """)
             st.write(query1)
 
 
             # previous_next_page_buttons()
 
-
-
-    
 if __name__ == "__main__":
     run()
