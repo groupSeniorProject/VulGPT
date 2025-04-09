@@ -15,3 +15,4 @@ Once logged in youll be able to see your data once you've uploaded it, which can
 ```
 wget https://osv-vulnerabilities.storage.googleapis.com/all.zip
 ```
+Once installed you are able to run 
