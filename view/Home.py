@@ -20,6 +20,12 @@ def execute_query(query, column_name: str):
         names = [record['name'] for record in result]
         df = pd.DataFrame(names, columns=[column_name])
         return df
+    
+def execute_query1(query):
+    with driver.session() as session:
+        result = session.run(query)
+        records = result.data()
+        return pd.DataFrame(records)
 
 @st.cache_data
 def get_total_node_vulns(query, total_nodes: str):
@@ -28,12 +34,12 @@ def get_total_node_vulns(query, total_nodes: str):
         return result.single()[total_nodes]
 
 @st.cache_data
-def unique_eco_pie_chart(query, limit):
+def unique_eco_pie_chart(query):
     with driver.session() as session:
         result = session.run(query)
         records = result.data()
         eco_df = pd.DataFrame(records)
-        eco_counts = eco_df['clean_name'].value_counts().reset_index().head(limit)
+        eco_counts = eco_df['clean_name'].value_counts().reset_index()
         eco_counts.columns = ['Ecosystem', 'Count']
 
         # Pie chart
@@ -41,7 +47,7 @@ def unique_eco_pie_chart(query, limit):
             eco_counts,
             names='Ecosystem',
             values='Count',
-            title=f'{limit} Ecosystem Name Distribution',
+            title=f'Ecosystem Name Distribution',
             color_discrete_sequence=px.colors.sequential.RdBu,
             hover_data=['Count']
         )
@@ -81,24 +87,45 @@ def previous_next_page_buttons():
 def run():
     st.title("VulGPT")
 
+
+
     if driver is not None:
 
         # returns total number of node vulns
         total_nodes = get_total_node_vulns("MATCH (n) RETURN COUNT(n) as total_nodes", 'total_nodes')
-        st.write(f"Total Vulnerabilities: {total_nodes}")
+        tb2, tb3 = st.tabs([ "Metrics", "Github Repo"])
 
-        text_search = st.text_input("Search Vulnerabilities")
+        with tb2:
+            st.write(f"Total Vulnerabilities: {total_nodes}")
 
-        query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name LIMIT 10", 'Ecosystems')
+            text_search = st.text_input("Search Vulnerabilities")
 
-        limit = st.selectbox("Select number of ecosystems to display:", [5, 10, 15, 20, 25], index=4)
+            query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name", 'Ecosystems')
 
-        unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name", limit)
+            unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name")
 
-        # previous_next_page_buttons()
+            if text_search:
+                st.write(search_results(query, text_search))
 
-        if text_search:
-            st.write(search_results(query, text_search))
+        with tb3: 
+            total_github = get_total_node_vulns(f"""MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+RETURN count(v.id) as total_nodes """, "total_nodes")
+            st.write(f"Total: {total_github}")
+
+
+            query1 = execute_query1(f"""MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+RETURN v.id as ID, 
+g.name,
+v.minimal_affected_versions,
+g.lang_breakdown
+limit 50 """)
+            st.write(query1)
+
+
+            # previous_next_page_buttons()
+
 
 
     
