@@ -100,9 +100,9 @@ def run():
 
             text_search = st.text_input("Search Vulnerabilities")
 
-            query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name", 'Ecosystems')
+            query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name", "name", 'Ecosystems')
 
-            unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name")
+            unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name", "clean_name")
 
             if text_search:
                 st.write(search_results(query, text_search))
