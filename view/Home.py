@@ -14,10 +14,10 @@ password = os.getenv("PASSWORD")
 driver = GraphDatabase.driver(uri=uri, auth=(username, password))
 
 @st.cache_data
-def execute_query(query, column_name: str):
+def execute_query(query, node_name: str, column_name: str):
     with driver.session() as session:
         result = session.run(query)
-        names = [record['name'] for record in result]
+        names = [record[node_name] for record in result]
         df = pd.DataFrame(names, columns=[column_name])
         return df
     
@@ -34,12 +34,12 @@ def get_total_node_vulns(query, total_nodes: str):
         return result.single()[total_nodes]
 
 @st.cache_data
-def unique_eco_pie_chart(query):
+def unique_eco_pie_chart(query, clean_name: str):
     with driver.session() as session:
         result = session.run(query)
         records = result.data()
         eco_df = pd.DataFrame(records)
-        eco_counts = eco_df['clean_name'].value_counts().reset_index()
+        eco_counts = eco_df[clean_name].value_counts().reset_index()
         eco_counts.columns = ['Ecosystem', 'Count']
 
         # Pie chart
@@ -47,7 +47,7 @@ def unique_eco_pie_chart(query):
             eco_counts,
             names='Ecosystem',
             values='Count',
-            title=f'Ecosystem Name Distribution',
+            title='Ecosystem Name Distribution',
             color_discrete_sequence=px.colors.sequential.RdBu,
             hover_data=['Count']
         )
@@ -73,7 +73,7 @@ def unique_eco_pie_chart(query):
 
 
 def search_results(df: pd.DataFrame, text_search: str):
-    m1 = df["Ecosystems"].str.lower().str.contains(text_search.lower())
+    m1 = df[text_search].str.lower().str.contains(text_search.lower())
     df_search = df[m1]
     return df_search
 
