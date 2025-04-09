@@ -53,7 +53,7 @@ def find_minimal_versions(version_groups):
 
     # Add a contraint to the solver that one version must be chosen for every version list
     for group in version_groups:
-        model.Add(sum(version_vars[version] for version in group if version in version_vars) == 1)
+        model.Add(sum(version_vars[version] for version in group if version in version_vars) <= 1)
 
     # Add a contraint that larger the weight the higher the priority
     # The weight is numbers of the version turned into a float. 
