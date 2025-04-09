@@ -14,10 +14,10 @@ password = os.getenv("PASSWORD")
 driver = GraphDatabase.driver(uri=uri, auth=(username, password))
 
 @st.cache_data
-def execute_query(query, column_name: str):
+def execute_query(query, node_name, column_name: str):
     with driver.session() as session:
         result = session.run(query)
-        names = [record['name'] for record in result]
+        names = [record[node_name] for record in result]
         df = pd.DataFrame(names, columns=[column_name])
         return df
 
@@ -28,12 +28,12 @@ def get_total_node_vulns(query, total_nodes: str):
         return result.single()[total_nodes]
 
 @st.cache_data
-def unique_eco_pie_chart(query, limit):
+def unique_eco_pie_chart(query):
     with driver.session() as session:
         result = session.run(query)
         records = result.data()
         eco_df = pd.DataFrame(records)
-        eco_counts = eco_df['clean_name'].value_counts().reset_index().head(limit)
+        eco_counts = eco_df['clean_name'].value_counts().reset_index()
         eco_counts.columns = ['Ecosystem', 'Count']
 
         # Pie chart
@@ -41,7 +41,7 @@ def unique_eco_pie_chart(query, limit):
             eco_counts,
             names='Ecosystem',
             values='Count',
-            title=f'{limit} Ecosystem Name Distribution',
+            title=f'Ecosystem Name Distribution',
             color_discrete_sequence=px.colors.sequential.RdBu,
             hover_data=['Count']
         )
@@ -89,11 +89,14 @@ def run():
 
         text_search = st.text_input("Search Vulnerabilities")
 
-        query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name LIMIT 10", 'Ecosystems')
+        query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS ecosystem_name", 'ecosystem_name', 'Ecosystems')
 
-        limit = st.selectbox("Select number of ecosystems to display:", [5, 10, 15, 20, 25], index=4)
+        # limit = st.selectbox("Select number of ecosystems to display:", [5, 10, 15, 20, 25], index=4)
 
-        unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name", limit)
+        unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name")
+
+        # lang_breakdown = get_node("MATCH (n:GitHub) RETURN n.lang_breakdown LIMIT 25")
+        # st.write(lang_breakdown)
 
         # previous_next_page_buttons()
 
