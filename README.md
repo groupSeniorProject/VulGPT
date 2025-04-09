@@ -16,3 +16,4 @@ Once logged in youll be able to see your data once you've uploaded it, which can
 wget https://osv-vulnerabilities.storage.googleapis.com/all.zip
 ```
 Once installed you are able to run loadOSVdataset.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Followed by the process_cve.py script, and upload_git.py. Which will all upload the data to the neo4j. 
+## Usage
