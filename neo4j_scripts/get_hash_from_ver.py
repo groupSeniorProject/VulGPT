@@ -27,6 +27,15 @@ EXTENSION_MAP = {
 	'.vim' : 'Vim Script',
 	'.roff' : 'Roff',
 	'.lua' : 'Lua',
+	'.m' : 'Matlab', # also for objective-C
+	'.asm' : 'Assembly',
+	'.l' : 'Lex',
+	'.y' : 'Yacc',
+	'.smpl' : 'SmPL',
+	'awk' : 'Awk',
+	'.uscript' : 'UnrealScript',
+	'.ps1' : 'PowerShell',
+	'.r' : 'R'
 	# need to add more file extensions
 }
 
