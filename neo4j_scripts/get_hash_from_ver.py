@@ -19,6 +19,7 @@ EXTENSION_MAP = {
 	'.h' : 'C',
 	'.cpp' : 'C++',
 	'.hpp' : 'C++',
+	'.cs' : 'C#',
 	'.php' : 'PHP',
 	'.rb' : 'Ruby',
 	'.swift' : 'Swift',
@@ -36,6 +37,10 @@ EXTENSION_MAP = {
 	'.uscript' : 'UnrealScript',
 	'.ps1' : 'PowerShell',
 	'.r' : 'R'
+	'.pl' : 'Perl'
+	'.m4' : 'M4',
+	'.sed' : 'SED',
+	'.clj' : 'clojure',
 	# need to add more file extensions
 }
 
