@@ -5,6 +5,8 @@ import pandas as pd
 from time import sleep, time
 import random
 
+
+# returns a list of all osv ids
 async def fetch_all_gcs_objects(bucket_url, prefix, headers=None):
     base_url = f"{bucket_url}"
     params = {
@@ -42,6 +44,8 @@ async def fetch_all_gcs_objects(bucket_url, prefix, headers=None):
 
     return all_items
 
+
+# returns a list of ecosystem names
 async def fetch_all_ecosystems(bucket_url, headers=None):
     base_url = f"{bucket_url}"
     params = {
@@ -79,7 +83,8 @@ bucket_url = "https://www.googleapis.com/storage/v1/b/osv-vulnerabilities/o"
 start = time()
 all_ecosystems = asyncio.run(fetch_all_ecosystems(bucket_url))
 
-def get_unique_list():
+# get a unique list of osv ids
+def get_unique_list(all_ecosystems):
     total = 0
     all_objects = {}
 
@@ -99,8 +104,9 @@ def get_unique_list():
     unique_list = list(set(combined_list))
     return unique_list
 
-unique_list = get_unique_list()
+unique_list = get_unique_list(all_ecosystems)
 
+# store unique list in a dataframe (dont need this part in the osv extractor) 
 df = pd.DataFrame(unique_list, columns=['Vulnerabilities'])
 df.to_csv("tester/vulnerabilities.csv", index=False)
 
@@ -134,6 +140,8 @@ async def fetch(session: aiohttp.ClientSession, sem: asyncio.Semaphore, vuln: st
         print(f"[{vuln}] Failed after {RETRY_LIMIT} retries")
         return None
 
+
+# returns a list of json data for each osv
 async def fetch_all_vulns_json():
     results = []
     sem = asyncio.Semaphore(MAX_CONCURRENCY)
