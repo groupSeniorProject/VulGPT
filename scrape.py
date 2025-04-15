@@ -92,12 +92,12 @@ def get_unique_list(all_ecosystems):
     unique_list = list(set(combined_list))
     return unique_list
 
-unique_list = get_unique_list(all_ecosystems)
+# unique_list = get_unique_list(all_ecosystems)
 
 #############################################################################
 # store unique list in a dataframe (dont need this part in the osv extractor)
-df = pd.DataFrame(unique_list, columns=['Vulnerabilities'])
-df.to_csv("tester/vulnerabilities.csv", index=False)
+# df = pd.DataFrame(unique_list, columns=['Vulnerabilities'])
+# df.to_csv("tester/vulnerabilities.csv", index=False)
 
 df_csv = pd.read_csv("tester/vulnerabilities.csv")
 vulns = df_csv['Vulnerabilities'].to_list()
@@ -111,7 +111,7 @@ url = "https://api.osv.dev/v1/vulns"
 # for the osv extractor use unique_list instead of vulns
 print(f"Total OSV {len(vulns)}")
 
-MAX_CONCURRENCY = 50  # Don't overload the server
+MAX_CONCURRENCY = 400  # Don't overload the server
 RETRY_LIMIT = 3
 
 async def fetch(session: aiohttp.ClientSession, sem: asyncio.Semaphore, vuln: str):
@@ -139,7 +139,7 @@ async def fetch_all_vulns_json():
     results = []
     sem = asyncio.Semaphore(MAX_CONCURRENCY)
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=200)) as session:
         tasks = [asyncio.create_task(fetch(session, sem, vuln)) for vuln in vulns]
         responses = await asyncio.gather(*tasks)
 
@@ -151,3 +151,6 @@ start = time()
 results = asyncio.run(fetch_all_vulns_json())
 end = time()
 print(f"Fetched {len(results)} items in {end - start:.2f} seconds")
+for i in range(len(results)):
+    print(f"{results[i]}\n")
+exit()
