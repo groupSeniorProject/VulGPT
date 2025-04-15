@@ -1,70 +1,133 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import requests
-from vul_auto_update.config.config import CWE_API_URL
+import asyncio
+import aiohttp
+from time import time
 from vul_auto_update.database.neo4j_manager import Neo4jManager
+
 
 class CWEExtractor:
     def __init__(self):
-        self.api_url = CWE_API_URL
+        self.api_url = "https://cwe-api.mitre.org/api/v1"
         self.neo4j_manager = Neo4jManager()
+        self.max_concurrency = 30
+        self.retry_limit = 3
 
-    # latest version
-    def get_latest_version(self):
-        version_url = f"{self.api_url}/cwe/version"
+    # ecosystems
+    def get_all_cwe_ids(self):
         try:
-            response = requests.get(version_url)
+            url = f"{self.api_url}/cwe/weakness/all"
+            response = requests.get(url)
             response.raise_for_status()
-
-            print("Response Content:", response.content.decode('utf-8'))
-
-            version_data = response.json()
-            version = version_data.get("ContentVersion")
-            print(f"Latest CWE Version: {version}")
-            return version
-
+            weaknesses = response.json().get("Weaknesses", [])
+            ids = [entry["ID"] for entry in weaknesses]
+            print(f" Retrieved {len(ids)} CWE IDs.")
+            return ids
         except requests.RequestException as e:
-            print(f"Error fetching CWE version: {e}")
-            return None
-
-    # Fetch and parse
-    def fetch_cwe_data(self):
-        version = self.get_latest_version()
-        if not version:
-            print("Failed to get CWE version.")
+            print(f" Failed to get CWE IDs: {e}")
             return []
 
-        cwe_ids = ["79", "89", "200"]
 
-        cwe_list = []
-        for cwe_id in cwe_ids:
-            cwe_url = f"{self.api_url}/cwe/weakness/{cwe_id}"
-            response = requests.get(cwe_url)
+    # Fetch one CWE ID's data (sync version of fetch)
+    def fetch_single_cwe(self, cwe_id):
+        try:
+            url = f"{self.api_url}/cwe/weakness/{cwe_id}"
+            response = requests.get(url)
             response.raise_for_status()
+            cwe_data_list = response.json().get("Weaknesses", [])
+            results = []
 
-            # Parse JSON content
-            cwe_data = response.json()
-            cwe_data_list = cwe_data.get("Weaknesses", [])  # list of weaknesses
-
-            # Loop through the list
-            for cwe_data_item in cwe_data_list:
-                cwe_id = cwe_data_item.get("ID")
-                name = cwe_data_item.get("Name")
-                description = cwe_data_item.get("Description", "No description available")
-
-                cwe_list.append({
-                    "cwe_id": cwe_id,
-                    "name": name,
-                    "description": description
+            for item in cwe_data_list:
+                results.append({
+                    "cwe_id": item.get("ID"),
+                    "name": item.get("Name"),
+                    "description": item.get("Description", "No description available")
                 })
+                print(f"Fetched CWE: {item.get('ID')} - {item.get('Name')}")
+            return results
 
-                print(f"Fetched CWE: {cwe_id} - {name}")
+        except requests.RequestException as e:
+            print(f"[CWE-{cwe_id}] Failed to fetch: {e}")
+            return []
 
-        print(f"Total CWE entries fetched: {len(cwe_list)}")
-        return cwe_list
+    # Async version of fetch_single_cwe
+    async def fetch(self, session, sem, cwe_id):
+        async with sem:
+            url = f"{self.api_url}/cwe/weakness/{cwe_id}"
+            for attempt in range(self.retry_limit):
+                try:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            result = []
+                            for item in data.get("Weaknesses", []):
+                                result.append({
+                                    "cwe_id": item.get("ID"),
+                                    "name": item.get("Name"),
+                                    "description": item.get("Description", "No description available")
+                                })
+                                print(f"Fetched CWE: {item.get('ID')} - {item.get('Name')}")
+                            return result
+                        else:
+                            print(f"[CWE-{cwe_id}] Status: {response.status}")
+                            return []
+                except Exception as e:
+                    print(f"[CWE-{cwe_id}] Exception: {e}")
+                    await asyncio.sleep(2 ** attempt)
+        return []
+
+    # Fetch all CWE entries as JSON
+    async def fetch_all_cwes_json(self, cwe_ids):
+        results = []
+        sem = asyncio.Semaphore(self.max_concurrency)
+        async with aiohttp.ClientSession() as session:
+            tasks = [asyncio.create_task(self.fetch(session, sem, cid)) for cid in cwe_ids]
+            responses = await asyncio.gather(*tasks)
+            for r in responses:
+                results.extend(r)
+        return results
+
+    # Optional custom query
+    def fetch_cwe_by_name(self, name_query):
+        # This is a dummy to keep structure parity with fetch_osv_data()
+        print(f"Searching CWEs for keyword: {name_query} (not implemented)")
+        return []
+
+    # Save results to Neo4j
+    def store_cwe_to_db(self, cwe_list):
+        for cwe in cwe_list:
+            self.neo4j_manager.upsert_cwe(
+                cwe_id=cwe['cwe_id'],
+                name=cwe['name'],
+                description=cwe['description']
+            )
+        self.neo4j_manager.close()
 
 
-# test CWEExtractor
+# Test Block
 if __name__ == "__main__":
+    start = time()
     extractor = CWEExtractor()
-    cwe_data = extractor.fetch_cwe_data()
-    for cwe in cwe_data:
-        print(cwe)
+
+    # Test get_all_cwe_ids()
+    sample_ids = extractor.get_all_cwe_ids()[:3]  # Just a few for testing
+    print(f"Sample CWE IDs: {sample_ids}")
+
+    # Test fetch_single_cwe() on one ID
+    print("\n Testing fetch_single_cwe on CWE-79:")
+    sample_single = extractor.fetch_single_cwe("79")
+    print(sample_single[:1])  # Show just one result
+
+    # Test async fetch_all_cwes_json() on a few IDs
+    print("\n Testing fetch_all_cwes_json on sample:")
+    results = asyncio.run(extractor.fetch_all_cwes_json(sample_ids))
+    print(f" Total CWE entries fetched: {len(results)}")
+
+    # Test storing (comment out if Neo4j isn't running)
+    print("\n Storing to Neo4j:")
+    extractor.store_cwe_to_db(results)
+
+    print(f"\n Test run complete in {time() - start:.2f} seconds")
