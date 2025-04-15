@@ -4,12 +4,40 @@ import os
 import subprocess
 import requests
 import time
+from tqdm import tqdm
+from neo4j import GraphDatabase
 
 personal_key = "YOUR_GITHUB_API_KEY_HERE"
 
 headers = {
 	'Authorization' : f'token {personal_key}'
 }
+
+# Neo4j Log in information, and uri
+uri = "neo4j://localhost:7687"
+user = "neo4j"
+password = "password" #your password here
+# Connects to neo4j
+driver = GraphDatabase.driver(uri, auth=(user, password))
+
+def check_connection(driver):
+    try:
+        with driver.session() as session:
+            result = session.run("RETURN 1 AS connected")
+            # If result is returned, connection is successful
+            print("Connected to Neo4j:", result.single())
+            return True
+    except Exception as e:
+        # If there is any exception, it indicates a connection failure
+        print("Failed to connect to Neo4j:", e)
+        return False
+
+def get_min(tx, query):
+	result = tx.run(query)
+	out = { }
+	for record in result:
+		out[record['id']] = record['min']
+	return out 
 
 def read_json_file(file_path):
 	# Opens json filea nd loads it, and returns.
@@ -32,7 +60,7 @@ def get_repo_size(repo: list):
 	api_url = "https://api.github.com/repos/{}/{}".format(repo[0], repo[1])
 	response = requests.get(api_url, headers=headers)
 	# because of api rate limits will sleep for 1 second 
-	time.sleep(0.73)
+	time.sleep(1)
 	if response.status_code == 200:
 		#This is the size given in kB
 		size = response.json()['size']
@@ -92,14 +120,21 @@ def get_CVE_files():
 
 if __name__ == '__main__':
 	cve_files = get_CVE_files()
-	print(len(cve_files))
 
+	check_connection(driver)
+	query = """
+	MATCH (n)
+	WHERE n.minimal_affected_versions IS NOT NULL AND n.minimal_affected_versions <> "No solution"
+	RETURN n.id AS id, n.minimal_affected_versions AS min
+	"""
+	with driver.session() as session:
+		result = session.execute_read(get_min, query) 
 	# I'm going to use a dictionaries to save the found data since this can easily be converted into a json file
 	found_data = { }
 	notFound = 0
 
 	# this is used to find the data
-	for file in range(len(cve_files)):
+	for file in tqdm(range(len(cve_files))):
 		try: 
 			osv_data = read_json_file(cve_files[file])
 			data = { } 
@@ -116,7 +151,12 @@ if __name__ == '__main__':
 							'lang-breakdown' :  lang_per,
 							'size' : get_repo_size(get_repo_name_from_url(d['repo']))
 						} 
-				found_data[d['repo']][osv_data['id']] = d['events']
+				# This will be a default, if something if found it will be replaced in the next for loop
+				found_data[d['repo']][osv_data['id']] = "Nothing found" 
+
+				for cve in list(result.keys()):
+					if cve in osv_data['id']:
+						found_data[d['repo']][osv_data['id']] = result[cve]
 
 
 					
@@ -127,4 +167,3 @@ if __name__ == '__main__':
 
 	# here we can makee the found data into a json file. Possible using this for loading the data without having to run the program again
 	write_json_file("found_data.json", found_data)
-	print(notFound)

@@ -19,6 +19,7 @@ EXTENSION_MAP = {
 	'.h' : 'C',
 	'.cpp' : 'C++',
 	'.hpp' : 'C++',
+	'.cs' : 'C#',
 	'.php' : 'PHP',
 	'.rb' : 'Ruby',
 	'.swift' : 'Swift',
@@ -27,6 +28,19 @@ EXTENSION_MAP = {
 	'.vim' : 'Vim Script',
 	'.roff' : 'Roff',
 	'.lua' : 'Lua',
+	'.m' : 'Matlab', # also for objective-C
+	'.asm' : 'Assembly',
+	'.l' : 'Lex',
+	'.y' : 'Yacc',
+	'.smpl' : 'SmPL',
+	'awk' : 'Awk',
+	'.uscript' : 'UnrealScript',
+	'.ps1' : 'PowerShell',
+	'.r' : 'R'
+	'.pl' : 'Perl'
+	'.m4' : 'M4',
+	'.sed' : 'SED',
+	'.clj' : 'clojure',
 	# need to add more file extensions
 }
 
