@@ -16,13 +16,10 @@ async def fetch_all_gcs_objects(bucket_url, prefix, headers=None):
     }
 
     all_items = []
-    page = 1
 
     while True:
         async with aiohttp.ClientSession() as session:
-            # print(f"\n--- Page {page} ---")
             response = await session.get(base_url, params=params, headers=headers)
-            # response.raise_for_status()
             data = await response.json()
 
             items = data.get('items', [])
@@ -33,14 +30,11 @@ async def fetch_all_gcs_objects(bucket_url, prefix, headers=None):
                     clean_name = name.split('/')[-1].replace('.json', '')
                     all_items.append(clean_name)
 
-            # print(f"Fetched {len(items)} items")
-
             next_token = data.get('nextPageToken')
             if not next_token:
                 break
 
             params['pageToken'] = next_token
-            page += 1
 
     return all_items
 
@@ -55,17 +49,13 @@ async def fetch_all_ecosystems(bucket_url, headers=None):
     }
 
     all_prefixes = []
-    page = 1
 
     while True:
-        # print(f"\n--- Page {page} ---")
         async with aiohttp.ClientSession() as session:
             response = await session.get(base_url, params=params, headers=headers, ssl=False)
-            # response.raise_for_status()
             data = await response.json()
 
             prefixes = data.get('prefixes', [])
-            # print(f"Fetched {len(prefixes)} prefixes")
             all_prefixes.extend(prefixes)
 
             next_token = data.get('nextPageToken')
@@ -73,10 +63,8 @@ async def fetch_all_ecosystems(bucket_url, headers=None):
                 break
 
             params['pageToken'] = next_token
-            page += 1
 
     return all_prefixes
-
 
 bucket_url = "https://www.googleapis.com/storage/v1/b/osv-vulnerabilities/o"
 
@@ -106,7 +94,8 @@ def get_unique_list(all_ecosystems):
 
 unique_list = get_unique_list(all_ecosystems)
 
-# store unique list in a dataframe (dont need this part in the osv extractor) 
+#############################################################################
+# store unique list in a dataframe (dont need this part in the osv extractor)
 df = pd.DataFrame(unique_list, columns=['Vulnerabilities'])
 df.to_csv("tester/vulnerabilities.csv", index=False)
 
@@ -114,8 +103,12 @@ df_csv = pd.read_csv("tester/vulnerabilities.csv")
 vulns = df_csv['Vulnerabilities'].to_list()
 end = time()
 print(f"Fetched {len(vulns)} items in {end - start:.2f} seconds")
+#############################################################################
 
+# using the osv api 
 url = "https://api.osv.dev/v1/vulns"
+
+# for the osv extractor use unique_list instead of vulns
 print(f"Total OSV {len(vulns)}")
 
 MAX_CONCURRENCY = 50  # Don't overload the server

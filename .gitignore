@@ -12,8 +12,6 @@ __pycache__
 
 config
 
-chromedriver.exe
-
 temp
 
 tester
