@@ -12,8 +12,6 @@ __pycache__
 
 config
 
-scrape.py
-
 chromedriver.exe
 
 temp
