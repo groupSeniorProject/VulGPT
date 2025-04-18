@@ -1,7 +1,5 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
 import requests
 import asyncio
 import aiohttp
@@ -10,15 +8,14 @@ from time import time
 from vul_auto_update.database.neo4j_manager import Neo4jManager
 from vul_auto_update.config.config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
-
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 class OSVExtractor:
     def __init__(self):
         self.api_url = "https://api.osv.dev/v1/vulns"
         self.bucket_url = "https://www.googleapis.com/storage/v1/b/osv-vulnerabilities/o"
         self.neo4j_manager = Neo4jManager()
-        self.max_concurrency = 50
+        self.max_concurrency = 250
         self.retry_limit = 3
 
     # returns a list of all osv ids from a specific ecosystem folder
@@ -30,8 +27,8 @@ class OSVExtractor:
         }
 
         all_items = []
-        while True:
-            async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
+            while True:
                 response = await session.get(self.bucket_url, params=params, headers=headers)
                 data = await response.json()
                 items = data.get('items', [])
@@ -55,8 +52,8 @@ class OSVExtractor:
         }
 
         all_prefixes = []
-        while True:
-            async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
+            while True:
                 response = await session.get(self.bucket_url, params=params, headers=headers, ssl=False)
                 data = await response.json()
                 prefixes = data.get('prefixes', [])
@@ -68,17 +65,26 @@ class OSVExtractor:
         return all_prefixes
 
     # takes in list of ecosystems, returns a unique list of all osv IDs
-    def get_unique_list(self, all_ecosystems):
+    async def get_unique_list(self, all_ecosystems, bucket_url, headers=None):
         total = 0
         all_objects = {}
+
+        tasks = []
         for ecosystem in all_ecosystems:
+            tasks.append(asyncio.create_task(self.fetch_all_gcs_objects(bucket_url, ecosystem, headers)))
+        results = await asyncio.gather(*tasks)
+
+        for i, ecosystem in enumerate(all_ecosystems):
             clean_name = ecosystem.replace('/', '')
-            all_objects[clean_name] = asyncio.run(self.fetch_all_gcs_objects(ecosystem))
+            # ecosystem = "CRAN/"
+            all_objects[clean_name] = results[i]
             print(f"{clean_name}: {len(all_objects[clean_name])}")
-            total += len(all_objects[clean_name])
+            total+=len(all_objects[clean_name])
+
         combined_list = []
         for value in all_objects.values():
             combined_list.extend(value)
+
         unique_list = list(set(combined_list))
         return unique_list
 
@@ -106,7 +112,7 @@ class OSVExtractor:
     async def fetch_all_vulns_json(self, vuln_list):
         results = []
         sem = asyncio.Semaphore(self.max_concurrency)
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=200)) as session:
             tasks = [asyncio.create_task(self.fetch(session, sem, vuln)) for vuln in vuln_list]
             responses = await asyncio.gather(*tasks)
             results.extend([res for res in responses if res is not None])
@@ -157,8 +163,6 @@ class OSVExtractor:
 
 # quick test to run the full flow and time it
 if __name__ == "__main__":
-    from time import time
-
     start = time()
     extractor = OSVExtractor()
 
@@ -166,10 +170,9 @@ if __name__ == "__main__":
     ecosystems = asyncio.run(extractor.fetch_all_ecosystems())
 
     # Get unique list of vuln IDs
-    unique_list = extractor.get_unique_list(ecosystems)
+    unique_list = asyncio.run(extractor.get_unique_list(ecosystems))
 
     # Fetch full JSON for each vuln
     results = asyncio.run(extractor.fetch_all_vulns_json(unique_list))
-
-    print(f"Fetched {len(results)} items in {time() - start:.2f} seconds")
-
+    end = time()
+    print(f"Fetched {len(results)} items in {end - start:.2f} seconds")
