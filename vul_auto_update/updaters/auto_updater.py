@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from vul_auto_update.extractors.cwe_extractor import CWEExtractor
 from vul_auto_update.extractors.osv_extractor import OSVExtractor
@@ -21,27 +22,11 @@ class AutoUpdater:
         self.cwe_extractor.neo4j_manager.close()
 
     def update_osv(self):
-        print("\n[INFO] Updating OSV Data...")
-        package_name = "flask"
-        ecosystem = "PyPI"
-        osv_list = self.osv_extractor.fetch_osv_data(package_name, ecosystem)
-        print(f"[INFO] Fetched {len(osv_list)} OSV entries.")
-        for osv in osv_list:
-            print(f"[INFO] Storing OSV: {osv['id']} - {osv['summary']}")
-            self.osv_extractor.neo4j_manager.upsert_osv(
-                osv_id=osv['id'],
-                summary=osv['summary'],
-                affected_versions=osv['affected_versions']
-            )
-        self.osv_extractor.neo4j_manager.close()
+        asyncio.run(self.osv_extractor.main())
 
     def run(self):
         print("\n[INFO] Starting Auto Update...")
         print(f"[INFO] Update started at: {datetime.now()}")
-        self.update_cwe()
+        # self.update_cwe()
         self.update_osv()
         print(f"[INFO] Update completed at: {datetime.now()}")
-
-if __name__ == "__main__":
-    updater = AutoUpdater()
-    updater.run()

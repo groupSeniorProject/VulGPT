@@ -1,13 +1,12 @@
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
+import sys
 import requests
 import asyncio
 import aiohttp
 from time import time
 from vul_auto_update.database.neo4j_manager import Neo4jManager
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 class CWEExtractor:
     def __init__(self):
@@ -106,8 +105,15 @@ class CWEExtractor:
             )
         self.neo4j_manager.close()
 
+    def fetch_cwe_data(self):
+        cwe_ids = self.get_all_cwe_ids()
+        if not cwe_ids:
+            return []
 
-# Test Block
+        print(f"[INFO] Fetching full CWE data for {len(cwe_ids)} IDs...")
+        return asyncio.run(self.fetch_all_cwes_json(cwe_ids))
+
+#Test Block
 if __name__ == "__main__":
     start = time()
     extractor = CWEExtractor()

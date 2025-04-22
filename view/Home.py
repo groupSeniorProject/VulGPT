@@ -7,11 +7,11 @@ from neo4j import GraphDatabase
 
 load_dotenv(override=True)
 
-uri = os.getenv("URI")
-username = os.getenv("USERNAME")
-password = os.getenv("PASSWORD")
+URI = os.getenv("URI")
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
 
-driver = GraphDatabase.driver(uri=uri, auth=(username, password))
+driver = GraphDatabase.driver(uri=URI, auth=(USERNAME, PASSWORD))
 
 @st.cache_data
 def execute_query(query, node_name: str, column_name: str):
@@ -86,8 +86,6 @@ def previous_next_page_buttons():
 
 def run():
     st.title("VulGPT")
-
-
 
     if driver is not None:
 
