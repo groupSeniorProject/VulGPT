@@ -10,7 +10,7 @@ tester.py
 
 __pycache__
 
-config
+config.py
 
 temp
 
@@ -18,10 +18,10 @@ tester
 
 scrape.py
 
-neo4j_scripts/
-
-view
-
 vul_auto_update
 
 .idea
+
+no_solution.txt
+
+app
