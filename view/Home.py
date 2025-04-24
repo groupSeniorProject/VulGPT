@@ -7,18 +7,14 @@ from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 driver = GraphDatabase.driver(uri=NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 @st.cache_data
-def execute_query(query, node_name: str, column_name: str):
+def execute_query(query, column_name: str):
     with driver.session() as session:
         result = session.run(query)
-        names = [record[node_name] for record in result]
-        df = pd.DataFrame(names, columns=[column_name])
-        return df
-    
-def execute_query1(query):
-    with driver.session() as session:
-        result = session.run(query)
-        records = result.data()
-        return pd.DataFrame(records)
+        if column_name:
+            names = [record['name'] for record in result]
+            return pd.DataFrame(names, columns=[column_name])
+        else:
+            return pd.DataFrame(result)
 
 @st.cache_data
 def get_total_node_vulns(query, total_nodes: str):
@@ -32,22 +28,27 @@ def unique_eco_pie_chart(query, clean_name: str):
         result = session.run(query)
         records = result.data()
         eco_df = pd.DataFrame(records)
+        
+        # Count vulnerabilities per ecosystem
         eco_counts = eco_df[clean_name].value_counts().reset_index()
         eco_counts.columns = ['Ecosystem', 'Count']
+        
+        eco_counts['Label'] = eco_counts.apply(
+            lambda row: f"{row['Ecosystem']} ({row['Count']})", axis=1
+        )
 
-        # Pie chart
+        # Plot pie chart
         fig = px.pie(
             eco_counts,
-            names='Ecosystem',
+            names='Label',  # show ecosystem and count in legend
             values='Count',
-            title='Ecosystem Name Distribution',
+            title='Vulnerabilities per Ecosystem',
             color_discrete_sequence=px.colors.sequential.RdBu,
             hover_data=['Count']
         )
 
         fig.update_traces(
             textinfo='none',
-            textposition='outside',
             pull=[0.03] * len(eco_counts),
             marker=dict(line=dict(color='#000000', width=1)),
             hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percent: %{percent}<extra></extra>'
@@ -64,9 +65,14 @@ def unique_eco_pie_chart(query, clean_name: str):
 
         st.plotly_chart(fig, use_container_width=True)
 
+@st.cache_data
+def get_ecosystem_list():
+    query = "MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS name"
+    df = execute_query(query, 'Ecosystems')
+    return [""] + df['Ecosystems'].dropna().unique().tolist()
 
 def search_results(df: pd.DataFrame, text_search: str):
-    m1 = df[text_search].str.lower().str.contains(text_search.lower())
+    m1 = df["Ecosystems"].str.lower().str.contains(text_search.lower())
     df_search = df[m1]
     return df_search
 
@@ -84,37 +90,72 @@ def run():
 
         # returns total number of node vulns
         total_nodes = get_total_node_vulns("MATCH (n) RETURN COUNT(n) as total_nodes", 'total_nodes')
-        tb2, tb3 = st.tabs([ "Metrics", "Github Repo"])
+        tb2, tb3 = st.tabs(["Ecosystems", "Github Repo"])
 
         with tb2:
             st.write(f"Total Vulnerabilities: {total_nodes}")
 
-            text_search = st.text_input("Search Vulnerabilities")
+            ecosystem_list = get_ecosystem_list()
+            selected_ecosystem = st.selectbox("Select Ecosystem", options=ecosystem_list)
 
-            query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name", "name", 'Ecosystems')
+            query = execute_query(f"MATCH (n:Ecosystem) RETURN n.ecosystem_name AS name", 'Ecosystems')
+            
 
-            unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name", "clean_name")
+            unique_eco_pie_chart("""
+                            MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(e:Ecosystem)
+                            RETURN split(e.ecosystem_name, ":")[0] AS clean_name
+                            """, "clean_name")
 
-            if text_search:
-                st.write(search_results(query, text_search))
+            # unique_eco_pie_chart("MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS clean_name")
+
+            if selected_ecosystem:
+                query = f""" MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(g:Ecosystem) 
+                                WHERE g.ecosystem_name STARTS WITH '{selected_ecosystem}'
+                                RETURN v.id as `Vulnerability ID`, g.ecosystem_name, v.details as Details, v.minimal_affected_versions as `Affected Versions`
+                                limit 50
+                    """
+                ecosystem_data = execute_query(query, column_name=None)
+
+                if ecosystem_data.empty:
+                    st.write(f"No vulnerabilities found in {selected_ecosystem}.")
+                else:
+                    for col in ecosystem_data.columns:
+                            ecosystem_data[col] = ecosystem_data[col].apply(lambda x: str(x) if isinstance(x, list) else x)
+                        
+                    st.subheader(f"Vulnerabilities in {selected_ecosystem}")
+                    specific_ecosystem = execute_query(f"""MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(g:Ecosystem) 
+                                WHERE g.ecosystem_name STARTS WITH '{selected_ecosystem}'
+                                RETURN  g.ecosystem_name AS `name` """, "Ecosystem Name")
+                    specific_ecosystem = [""] + specific_ecosystem['Ecosystem Name'].dropna().unique().tolist()
+                    selected_specific_ecoystem = st.selectbox("Select Specific Ecosystem", options=specific_ecosystem, index=0, key ="None")
+                    
+                    # Problem: takes long time, query will need to be indexed
+                    if selected_specific_ecoystem:
+                        query = f""" MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(g:Ecosystem) 
+                                    WHERE g.ecosystem_name STARTS WITH '{selected_specific_ecoystem}'
+                                    RETURN v.id as `Vulnerability ID`, v.details as Details, v.minimal_affected_versions as `Affected Versions`
+                                    limit 50
+                        """
+                        ecosystem_data = execute_query(query, column_name=None)
+                        if ecosystem_data.empty:
+                            st.write(f"No vulnerabilities found in {selected_specific_ecoystem}.")
+                        else:
+                            for col in ecosystem_data.columns:
+                                ecosystem_data[col] = ecosystem_data[col].apply(lambda x: str(x) if isinstance(x, list) else x)
+                            st.subheader(f"Vulnerabilities in {selected_specific_ecoystem}")
+
+                    st.write(ecosystem_data)
 
         with tb3: 
-            total_github = get_total_node_vulns(f"""
-            MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
-            WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
-            RETURN count(v.id) as total_nodes """, "total_nodes")
-
+            total_github = get_total_node_vulns(f"""MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+                                                WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+                                                RETURN count(v.id) as total_nodes """, "total_nodes")
             st.write(f"Total: {total_github}")
 
-            query1 = execute_query1(f"""
-            MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
-            WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
-            RETURN v.id as ID, 
-            g.name,
-            v.minimal_affected_versions,
-            g.lang_breakdown
-            LIMIT 50""")
-
+            query1 = execute_query(f"""MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+                                    WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+                                    RETURN v.id as ID, g.name, v.minimal_affected_versions, g.lang_breakdown
+                                    limit 50 """, column_name=None)
             st.write(query1)
 
 
