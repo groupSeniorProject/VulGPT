@@ -1,48 +1,115 @@
+import glob
 import json
 import subprocess
 import os
+import requests
+import shutil
+from tqdm import tqdm
 from collections import defaultdict 
 
-EXTENSION_MAP = {
-	'.py' : 'Python',
-	'.js' : 'JavaScript',
-	'.java' : 'Java',
-	'.html' : 'HTML',
-	'.css' : 'CSS',
-	'.md' : 'Markdown',
-	'.json' : 'JSON',
-	'.yml' : 'YAML',
-	'.sh': 'Shell',
-	'.go' : 'Go',
-	'.rs' : 'Rust',
-	'.c' : 'C',
-	'.h' : 'C',
-	'.cpp' : 'C++',
-	'.hpp' : 'C++',
-	'.cs' : 'C#',
-	'.php' : 'PHP',
-	'.rb' : 'Ruby',
-	'.swift' : 'Swift',
-	'.kt' : 'Kotlin',
-	'.ts' : 'TypeScript',
-	'.vim' : 'Vim Script',
-	'.roff' : 'Roff',
-	'.lua' : 'Lua',
-	'.m' : 'Matlab', # also for objective-C
-	'.asm' : 'Assembly',
-	'.l' : 'Lex',
-	'.y' : 'Yacc',
-	'.smpl' : 'SmPL',
-	'awk' : 'Awk',
-	'.uscript' : 'UnrealScript',
-	'.ps1' : 'PowerShell',
-	'.r' : 'R'
-	'.pl' : 'Perl'
-	'.m4' : 'M4',
-	'.sed' : 'SED',
-	'.clj' : 'clojure',
-	# need to add more file extensions
-}
+# These language extensions where provided by chatgpt, since there are so many and I didn't want to check what the extension is for what. most of them look correct, but there could be some errors
+EXTENSION_MAP =  {
+    '.c': 'C', '.h': 'C', '.s': 'Assembly',
+    '.asm': 'Assembly', '.sh': 'Shell', '.py': 'Python',
+    'Makefile': 'Makefile', '.pl': 'Perl', '.rs': 'Rust',
+    '.roff': 'Roff', '.cpp': 'C++', '.cc': 'C++',
+    '.cxx': 'C++', '.hpp': 'C++', '.hxx': 'C++',
+    '.smpl': 'SmPL', '.y': 'Yacc', '.l': 'Lex',
+    '.awk': 'Awk', '.jinja': 'Jinja', '.uc': 'UnrealScript',
+    '.feature': 'Gherkin', '.ld': 'Linker Script', '.m4': 'M4',
+    '.clj': 'Clojure', '.m': 'MATLAB', '.sed': 'sed',
+    '.xs': 'XS', '.x': 'RPC', '.m': 'Objective-C',  # Note: .m is also used for MATLAB
+    '.cmake': 'CMake', '.java': 'Java', '.d': 'D',
+    '.rb': 'Ruby', '.js': 'JavaScript', '.raku': 'Raku',
+    '.bat': 'Batchfile', '.ps1': 'PowerShell', '.php': 'PHP',
+    '.html': 'HTML', '.cs': 'C#', '.bb': 'BitBake',
+    '.star': 'Starlark', '.pas': 'Pascal', '.nasl': 'NASL',
+    '.kt': 'Kotlin', '.css': 'CSS', '.swg': 'SWIG',
+    '.dcl': 'DIGITAL Command Language', '.pwn': 'Pawn', '.el': 'Emacs Lisp',
+    '.plt': 'Gnuplot', '.ll': 'LLVM', '.lua': 'Lua',
+    '.vim': 'Vim Script', '.pov': 'POV-Ray SDL', 'Dockerfile': 'Dockerfile',
+    '.vbs': 'VBScript', '.mms': 'Module Management System', '.vba': 'VBA',
+    '.ec': 'eC', '.r': 'R', '.ts': 'TypeScript',
+    '.nsi': 'NSIS', '.xslt': 'XSLT', '.hbs': 'Handlebars',
+    '.pgsql': 'PLpgSQL', '.less': 'Less', '.sql': 'SQL',
+    '.coffee': 'CoffeeScript', '.go': 'Go', '.scss': 'SCSS',
+    '.snip': 'Vim Snippet', '.iss': 'Inno Setup', '.lisp': 'Common Lisp',
+    '.plsql': 'PLSQL', '.rtf': 'Rich Text Format', '.mustache': 'Mustache',
+    '.gdb': 'GDB', '.ps': 'PostScript', '.gap': 'GAP',
+    '.mako': 'Mako', '.thrift': 'Thrift', '.ftl': 'FreeMarker',
+    '.sqlpl': 'SQLPL', '.tex': 'TeX', '.groovy': 'Groovy',
+    '.rpgle': 'RPGLE', '.icl': 'Clean', '.g4': 'ANTLR',
+    '.erl': 'Erlang', '.meson': 'Meson', '.hack': 'Hack',
+    '.ml': 'OCaml', '.nix': 'Nix', '.ipynb': 'Jupyter Notebook',
+    '.alloy': 'Alloy', '.sml': 'Standard ML', '.dune': 'Dune',
+    '.rs': 'RenderScript', '.aj': 'AspectJ', '.tpl': 'Smarty',
+    '.vala': 'Vala', '.ex': 'Elixir', '.tla': 'TLA',
+    '.mdx': 'MDX', '.njk': 'Nunjucks', '.pegjs': 'PEG.js',
+    '.ejs': 'EJS', '.vm': 'Velocity Template Language', '.as': 'ActionScript',
+    '.just': 'Just', '.md': 'Markdown', '.scm': 'Scheme',
+    '.plg': 'Prolog', '.scala': 'Scala', '.f': 'Fortran',
+    '.sci': 'Scilab', '.bsl': '1C Enterprise', '.mm': 'Objective-C++',
+    '.fs': 'F#', '.fth': 'Forth', '.nb': 'Mathematica',
+    '.ada': 'Ada', '.scd': 'SuperCollider', '.applescript': 'AppleScript',
+    '.hx': 'Haxe', '.glsl': 'GLSL', '.cu': 'Cuda',
+    '.tcl': 'Tcl', '.pb': 'PureBasic', '.metal': 'Metal',
+    '.v': 'Verilog', '.hlsl': 'HLSL', '.csd': 'Csound',
+    '.qml': 'QML', '.pro': 'QMake', '.yara': 'YARA',
+    '.bib': 'BibTeX Style', '.vb': 'Visual Basic .NET', '.bas': 'Visual Basic 6.0',
+    '.fsx': 'F#', '.amp': 'AMPL', '.nss': 'NWScript',
+    '.stg': 'StringTemplate', '.sls': 'SaltStack', '.bb': 'BlitzBasic',
+    '.soy': 'Closure Templates', '.ftl': 'Fluent', '.twig': 'Twig',
+    '.pug': 'Pug', '.vcl': 'VCL', '.svelte': 'Svelte',
+    '.ecl': 'ECL', '.sage': 'Sage', '.capnp': "Cap'n Proto",
+    '.aug': 'Augeas', '.sass': 'Sass', '.vue': 'Vue',
+    '.q': 'q', '.pig': 'PigLatin', '.templ': 'templ',
+    '.zig': 'Zig', '.hcl': 'HCL', '.jq': 'jq',
+    '.sas': 'SAS', '.mrc': 'mIRC Script', '.ags': 'AGS Script',
+    '.praat': 'Praat', '.lsl': 'LSL', '.liquid': 'Liquid',
+    '.asp': 'ASP', '.vhdl': 'VHDL', '.ahk': 'AutoHotkey',
+    '.styl': 'Stylus', '.mask': 'Mask', '.gcode': 'G-code',
+    '.hs': 'Haskell', '.dart': 'Dart', '.elm': 'Elm',
+    '.scad': 'OpenSCAD', '.lean': 'Lean', '.io': 'Io',
+    '.cfm': 'ColdFusion', '.cob': 'COBOL', '.jsonnet': 'Jsonnet',
+    '.cr': 'Crystal', '.qs': 'Q#', '.nf': 'Nextflow',
+    '.dsp': 'Faust', '.ipf': 'IGOR Pro', '.do': 'Stata',
+    '.asl': 'ASL', '.p6': 'Perl 6', '.robot': 'RobotFramework',
+    '.prg': 'xBase', '.motoko': 'Motoko', '.wasm': 'WebAssembly',
+    '.p4': 'P4', '.pascal': 'Component Pascal', '.ql': 'CodeQL',
+    '.zeek': 'Zeek', '.blade': 'Blade', '.volt': 'Volt',
+    '.slim': 'Slim', '.wren': 'Wren', '.rascal': 'Rascal',
+    '.clarion': 'Clarion', '.fb': 'FreeBASIC', '.apib': 'API Blueprint',
+    '.mod': 'Modula-2', '.dm': 'DM', '.sol': 'Solidity',
+    '.ms': 'Groff', '.rexx': 'REXX', '.pike': 'Pike',
+    '.boo': 'Boo', '.limbo': 'Limbo', '.idl': 'IDL',
+    '.bas': 'BASIC', '.bmx': 'BlitzMax', '.dylan': 'Dylan',
+    '.mo': 'Modelica', '.gs': 'Genie', '.qbs': 'QuickBASIC',
+    '.j': 'J', '.rkt': 'Racket', '.vhd': 'VHDL',
+    '.coq': 'Coq', '.ly': 'LilyPond', '.xq': 'XQuery',
+    '.swift': 'Swift', '.jl': 'Julia', '.bf': 'Brainfuck',
+    '.e': 'Eiffel', '.nim': 'Nim', '.stan': 'Stan',
+    '.idr': 'Idris', '.agda': 'Agda', '.apl': 'APL',
+    '.fut': 'Futhark', '.zep': 'Zephir', '.tea': 'Tea',
+    '.pony': 'Pony', '.x10': 'X10', '.opa': 'Opa',
+    '.astro': 'Astro', '.bal': 'Ballerina', '.xml': 'XML',
+    '.proto': 'Protocol Buffer', '.ss': 'Scheme', '.purs': 'PureScript',
+    '.mql': 'MQL4', '.mcfunction': 'mcfunction', '.chpl': 'Chapel',
+    '.cypher': 'Cypher', '.mojo': 'Mojo', '.golo': 'Golo',
+    '.tact': 'Tact', '.ceylon': 'Ceylon', '.carbon': 'Carbon',
+    '.smali': 'Smali', '.typ': 'Typst', '.pddl': 'PDDL',
+    '.mlir': 'MLIR', '.brs': 'BrighterScript', '.bicep': 'Bicep',
+    '.lab': 'LabVIEW', '.smt2': 'SMT', '.bpl': 'Boogie',
+    '.fstar': 'F*', '.ck': 'ChucK', '.hy': 'Hy',
+    '.pyret': 'Pyret', '.vy': 'Vyper', '.nit': 'Nit',
+    '.gleam': 'Gleam', '.fnl': 'Fennel', '.ls': 'LiveScript',
+    '.mly': 'OCaml', '.nsh': 'Nushell', '.nu': 'Nu',
+    '.imba': 'Imba', '.sql': 'SQL', '.msg': 'OMNeT++ MSG',
+    '.spin': 'Propeller Spin', '.nasal': 'Nasal', '.pkl': 'Pkl',
+    '.imba': 'Imba',
+} 
+output_dir = "/mnt/disk-5/all_codes"
+# Make sure the output directory exists
+os.makedirs(output_dir, exist_ok=True)
 
 def get_commit_hash_from_tag(repo_url, tag, github_token=None, first=True):
 	# since we have to go 2 layers deep into the api we first need to get the tag hash
@@ -67,35 +134,45 @@ def get_commit_hash_from_tag(repo_url, tag, github_token=None, first=True):
 			return data['object']['sha']
 	except requests.exceptions.HTTPError as e:
 		if response.status_code == 404:
-			print(f"Tag '{tag}' not found in repository. Skipping.")
+			tqdm.write(f"Tag '{tag}' not found in repository. Skipping.")
 		elif response.status_code == 403:
-			print("api limit reached, try again later")
+			tqdm.write("api limit reached, try again later")
 		elif reponse.status_code == 401:
-			print("authorization not successful")
+			tqdm.write("authorization not successful")
 			if github_toke is not None:
-				print("trying without token")
+				tqdm.write("trying without token")
 				return get_commit_hash_from_tag(repo_url, tag, first=first)
 			else:
-				print("try using a github token")
+				tqdm.write("try using a github token")
 		else:
-			print(f"HTTP error occurred: {e}")
+			tqdm.write(f"HTTP error occurred: {e}")
 		return None
 	except Exception as e:
-		print(f"An error occurred: {e}")
+		tqdm.write(f"An error occurred: {e}")
 		return None
+
+def get_dir_size(path):
+	total_size = 0
+	for dirpath, dirnames, filenames in os.walk(path):
+		for f in filenames:
+			fp = os.path.join(dirpath, f)
+			if os.path.exists(fp):
+				total_size += os.path.getsize(fp)
+	# returns in bytes
+	return total_size	
 
 def shallow_repo(repo_url):
 	path = f"/mnt/disk-5/GIT/{repo_url.strip('/').split('/')[-1]}"
 	if os.path.exists(path) and os.path.exists(path+"/.git"):
-		print(f"Repo already exist at {path}")
+		tqdm.write(f"Repo already exist at {path}")
 	else:
-		subprocess.run(["mkdir", path])
-		subprocess.run(["git", "-C", path,"-c", "init.defaultbranch=main" ,"init"])
-		subprocess.run(["git", "-C", path, "remote", "add", "origin", repo_url+".git"])
+		subprocess.run(["mkdir", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+		subprocess.run(["git", "-C", path,"-c", "init.defaultbranch=main" ,"init"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+		subprocess.run([ "git", "-C", path, "remote", "add", "origin", repo_url+".git"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def get_working_copy_size(repo_url):
+def get_working_copy_size(path):
 	total_size = 0
-	path = f"/mnt/disk-5/GIT/{repo_url.strip('/').split('/')[-1]}"
+	#path = f"/mnt/disk-5/GIT/{repo_url.strip('/').split('/')[-1]}"
 	for dirpath, dirnames, filenames in os.walk(path):
 		if '.git' in dirnames:
 			dirnames.remove('.git')  # Skip Git metadata
@@ -104,8 +181,8 @@ def get_working_copy_size(repo_url):
 			total_size += os.path.getsize(fp)
 	return total_size
 
-def get_working_copy_lang_breakdown(repo_url):
-	repo_path = f"/mnt/disk-5/GIT/{repo_url.strip('/').split('/')[-1]}" 
+def get_working_copy_lang_breakdown(repo_path):
+	#repo_path = f"/mnt/disk-5/GIT/{repo_url.strip('/').split('/')[-1]}" 
 	# Get file list with extensions
 	file_stats = defaultdict(int)
 	total_size = 0
@@ -131,24 +208,94 @@ def get_working_copy_lang_breakdown(repo_url):
 	# Calculate percentages
 	return {lang: (size/total_size)*100 for lang, size in file_stats.items()}
 
-def switch_to_commit(repo_url, commit_hash):
-	path = f"/mnt/disk-5/GIT/{repo_url.strip('/').split('/')[-1]}"
-	subprocess.run(["git", "-C", path, "fetch", "--depth", "1", "origin", commit_hash])
-	subprocess.run(["git", "-C", path, "-c", "advice.detachedHead=false", "checkout", "FETCH_HEAD"])
+def switch_to_commit(path, commit_hash):
+	env = os.environ.copy()
+	env["GIT_TERMINAL_PROMPT"] = "0"
+	output = subprocess.run(["git", "-C", path, "fetch", "--depth", "1", "origin", commit_hash], capture_output=True, text=True, env=env)
+	if "fatal" not in output.stderr:
+		subprocess.run(["git", "-C", path, "-c", "advice.detachedHead=false", "checkout", "FETCH_HEAD"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+		return True
+	else:
+		tqdm.write("switch failed")
+		return False
+
+def clear_dir(path_to_dir):
+	for filename in os.listdir(path_to_dir):
+			file_path = os.path.join(path_to_dir, filename)
+			try:
+				if os.path.isfile(file_path) or os.path.islink(file_path):
+					os.remove(file_path)
+				elif os.path.isdir(file_path):
+					shutil.rmtree(file_path)
+			except Exception as e:
+				tqdm.write(f'Failed to delete {file_path}. Reason: {e}')
 	
+def must_include(filename):
+	_, ext = os.path.splitext(filename)
+	# currently skips md, but this can always be changed
+	return ext.lower() in list(EXTENSION_MAP.keys()) and ext.lower() != ".md"
+
+# This function gets, all code from a github repository commit version
+def repo_walk(repo_path, repo_url, commit):
+	output_file = os.path.join(output_dir, f"{repo_url.strip('/').split('/')[-1]}_{commit}_all_code.txt")
+	with open(output_file, 'w', encoding='utf-8') as outfile:
+		outfile.write(f"repo:{repo_url}\ncommit: {commit}\n")
+		for root, dirs, files in os.walk(repo_path):
+			# This will skip all the hidden directories
+			dirs[:] = [d for d in dirs if not d.startswith('.')]
+			for file in files:
+				if file.startswith('.'):
+					continue
+				if must_include(file):
+					file_path = os.path.join(root, file)
+					file_size = os.path.getsize(file_path)
+					if file_size < 200000:
+						rel_path = os.path.relpath(file_path, repo_path)
+
+						outfile.write(f"\n--- {rel_path} ---\n")
+						try:
+							with open(file_path, 'r', encoding='utf-8', errors='ignore') as infile:
+								outfile.write(infile.read())
+						except Exception as e:
+							outfile.write(f"\n[Could not read {rel_path}: {e}]\n")
+
+def full_breakdown(repo, commit):
+	path = f"/mnt/disk-5/GIT/{repo.strip('/').split('/')[-1]}"
+	#tqdm.write(commit)
+	shallow_repo(repo)
+	switch_pass = switch_to_commit(path, commit)
+	if switch_pass:
+		lang = get_working_copy_lang_breakdown(path)
+		tqdm.write(f"current version size: {round(get_working_copy_size(repo)/1000000, 2)} MB")
+		tqdm.write(f"language breakdown: \n {json.dumps(lang, indent=4)}")
+		repo_walk(path, repo, commit)
+	else:
+		twdm.write("Skipping file")
 
 # this is an example of how the methods could be used
 if __name__ == '__main__':
-	repo = "https://github.com/vim/vim"
-	ver = "v9.1.0697"
-	github_token = None # your git key here as a string 
-	commit = get_commit_hash_from_tag(repo_url=repo, tag=ver)
-	if commit is not None:
-		print(commit)
-		shallow_repo(repo)
-		switch_to_commit(repo, commit)
-		lang = get_working_copy_lang_breakdown(repo)
-		print(f"current version size: {round(get_working_copy_size(repo)/1000000, 2)} MB")
-		print(f"language breakdown: \n {json.dumps(lang, indent=4)}")
-	else:
-		print("No Token Found")
+	def read_json_file(file_path):
+		# Opens json filea nd loads it, and returns.
+		with open(file_path, "r", encoding="utf-8") as file:
+			return json.load(file)
+	# This example relies on having the data chunks from https://github.com/timothee-chauvin/eyeballvul_experiments
+	path_to_jsons = "/path/to/eyeballvul_experiments/data/chunks/*.json"
+	json_data_files = glob.glob(path_to_jsons)
+	pbar = tqdm(range(len(json_data_files)))
+	for file in pbar:
+		data = read_json_file(json_data_files[file])		
+		try:
+			pbar.set_description(f"working on {data['repo_url'].strip('https://github.com/')}")
+			full_breakdown(data['repo_url'], data['commit'])
+			# since checking the size of the dir can be quite an intensive process, we will only do it every 200 file process
+			if file % 200 == 0:
+				#if we have more than 10GB worth of repos in our git folder clear folder and keep going
+				# this is to help manage space
+				size = get_dir_size("/mnt/disk-5/GIT")/(1024**3)
+				if size > 10:
+					clear_dir("/mnt/disk-5/GIT")	
+					tqdm.write("Clearing GIT")
+				else:
+					tqdm.write(f"Current GIT dir size: {size}")
+		except Exception as e:
+			tqdm.write(f"something went wrong with {json_data_files[file]}: {e}")
