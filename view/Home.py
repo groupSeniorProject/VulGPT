@@ -97,24 +97,45 @@ def run():
 
             st.title("Vulnerability Explorer")
 
-            # ecosystem_list = driver.get_ecosystem_list()
-            # selected_ecosystem = st.selectbox("Select Ecosystem", options=ecosystem_list, key="selected_ecosystem", on_change=driver.reset_pagination())
-
+            ecosystem_list = driver.get_ecosystem_list()
+            selected_ecosystem = st.sidebar.selectbox("Select Ecosystem", options=ecosystem_list, key="selected_ecosystem", on_change=driver.reset_pagination())
+            
+            skip_count = st.session_state.page_number * PAGE_SIZE
             with st.spinner("Fetching vulnerabilities..."):
-                skip_count = st.session_state.page_number * PAGE_SIZE
-                vulnerabilities_df = driver.get_vulnerabilities(skip=skip_count, limit=PAGE_SIZE)
+                    if selected_ecosystem == "":
+                        vulnerabilities_df = driver.get_vulnerabilities(skip=skip_count, limit=PAGE_SIZE)
+                    else:
+                        st.subheader(f"Vulnerabilities in {selected_ecosystem}")
+                        vulnerabilities_df = driver.get_vulnerabilities_by_ecosystem(selected_ecosystem, skip=skip_count, limit=PAGE_SIZE)
+                        
+                        specific_ecosystem = driver.execute_query(f"""
+                            MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(g:Ecosystem) 
+                            WHERE g.ecosystem_name STARTS WITH '{selected_ecosystem}'
+                            RETURN  g.ecosystem_name AS `name` """, "Ecosystem Name"               
+                        )
+                        specific_ecosystem = [""] + specific_ecosystem['Ecosystem Name'].dropna().unique().tolist()
 
-            if vulnerabilities_df.empty:
-                st.warning("No vulnerabilities found.")
-            else:
-                for _, row in vulnerabilities_df.iterrows():
-                    with st.container():
-                        st.markdown(f"""
-                        <div style="border:1px solid #ccc; padding:10px; border-radius:8px; margin-bottom:10px;">
-                            <h5>ID: {row['id']} | Ecosystem: <span style="color: #007BFF;">{row['ecosystem_name']}</span></h5>
-                            <p>{row['summary']}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        selected_specific_ecoystem = st.sidebar.selectbox("Select Specific Ecosystem", options=specific_ecosystem, index=0, key="specific_ecosystem")
+
+                        if selected_specific_ecoystem:
+                            st.subheader(f"Vulnerabilities in {selected_specific_ecoystem}")
+                            vulnerabilities_df = driver.get_vulnerabilities_by_ecosystem(selected_specific_ecoystem, skip=skip_count, limit=PAGE_SIZE)
+
+                            
+
+
+                    if vulnerabilities_df.empty:
+                        st.warning("No vulnerabilities found.")
+
+                    else:
+                        for _, row in vulnerabilities_df.iterrows():
+                            with st.container():
+                                st.markdown(f"""
+                                <div style="border:1px solid #ccc; padding:10px; border-radius:8px; margin-bottom:10px;">
+                                    <h5>ID: {row['id']} | Ecosystem: <span style="color: #007BFF;">{row['ecosystem_name']}</span></h5>
+                                    <p>{row['summary']}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
 
             # ------------------ Navigation ------------------
             col1, col2, _ = st.columns([1, 1, 3])
