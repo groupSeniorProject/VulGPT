@@ -112,44 +112,49 @@ output_dir = "/mnt/disk-5/all_codes"
 os.makedirs(output_dir, exist_ok=True)
 
 def get_commit_hash_from_tag(repo_url, tag, github_token=None, first=True):
-	# since we have to go 2 layers deep into the api we first need to get the tag hash
-	# then with the tag has we can get the commit hash 
-	if first:
-		api_url = f"https://api.github.com/repos/{repo_url.split('/')[-2]}/{repo_url.split('/')[-1]}/git/ref/tags/{tag}"
-	else:
-		api_url = f"https://api.github.com/repos/{repo_url.split('/')[-2]}/{repo_url.split('/')[-1]}/git/tags/{tag}"
+    # since we have to go 2 layers deep into the api we first need to get the tag hash
+    # then with the tag has we can get the commit hash 
+    if first:
+        api_url = f"https://api.github.com/repos/{repo_url.split('/')[-2]}/{repo_url.split('/')[-1]}/git/ref/tags/{tag}"
+    else:
+        api_url = f"https://api.github.com/repos/{repo_url.split('/')[-2]}/{repo_url.split('/')[-1]}/git/tags/{tag}"
 
-	headers = {}
-	if github_token:
-		headers['Authorization'] = f'token {github_token}'
-	try:
-		response = requests.get(api_url, headers=headers)
-		response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-		data = response.json()
-		if first:
-			# this is sha for tag not commit
-			return get_commit_hash_from_tag(repo_url, data['object']['sha'], github_token, False)	
-		else:
-			# this is the commit sha
-			return data['object']['sha']
-	except requests.exceptions.HTTPError as e:
-		if response.status_code == 404:
-			tqdm.write(f"Tag '{tag}' not found in repository. Skipping.")
-		elif response.status_code == 403:
-			tqdm.write("api limit reached, try again later")
-		elif reponse.status_code == 401:
-			tqdm.write("authorization not successful")
-			if github_toke is not None:
-				tqdm.write("trying without token")
-				return get_commit_hash_from_tag(repo_url, tag, first=first)
-			else:
-				tqdm.write("try using a github token")
-		else:
-			tqdm.write(f"HTTP error occurred: {e}")
-		return None
-	except Exception as e:
-		tqdm.write(f"An error occurred: {e}")
-		return None
+    headers = {}
+    if github_token:
+        headers['Authorization'] = f'token {github_token}'
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+        data = response.json()
+        if first:
+	    #url that contains commit has the commit hash in the first response
+            if 'commit' in data['object']['url']:
+                return data['object']['sha']
+            else:
+                # this is sha for tag not commit
+                return get_commit_hash_from_tag(repo_url, data['object']['sha'], github_token, False)
+        else:
+            # this is the commit sha
+            return data['object']['sha']
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 404:
+            tqdm.write(f"Tag '{tag}' not found in repository. Skipping.")
+        elif response.status_code == 403:
+            tqdm.write("api limit reached, try again later")
+        elif reponse.status_code == 401:
+            tqdm.write("authorization not successful")
+            if github_toke is not None:
+                tqdm.write("trying without token")
+                return get_commit_hash_from_tag(repo_url, tag, first=first)
+            else:
+                tqdm.write("try using a github token")
+        else:
+            tqdm.write(f"HTTP error occurred: {e}")
+        return None
+    except Exception as e:
+        tqdm.write(f"An error occurred: {e}")
+        return None
+
 
 def get_dir_size(path):
 	total_size = 0
