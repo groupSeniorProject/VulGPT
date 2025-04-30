@@ -1,4 +1,4 @@
-import glob
+jjimport glob
 import json
 import subprocess
 import os
@@ -241,28 +241,31 @@ def must_include(filename):
 	return ext.lower() in list(EXTENSION_MAP.keys()) and ext.lower() != ".md"
 
 # This function gets, all code from a github repository commit version
-def repo_walk(repo_path, repo_url, commit):
-	output_file = os.path.join(output_dir, f"{repo_url.strip('/').split('/')[-1]}_{commit}_all_code.txt")
-	with open(output_file, 'w', encoding='utf-8') as outfile:
-		outfile.write(f"repo:{repo_url}\ncommit: {commit}\n")
-		for root, dirs, files in os.walk(repo_path):
-			# This will skip all the hidden directories
-			dirs[:] = [d for d in dirs if not d.startswith('.')]
-			for file in files:
-				if file.startswith('.'):
-					continue
-				if must_include(file):
-					file_path = os.path.join(root, file)
-					file_size = os.path.getsize(file_path)
-					if file_size < 200000:
-						rel_path = os.path.relpath(file_path, repo_path)
-
-						outfile.write(f"\n--- {rel_path} ---\n")
-						try:
-							with open(file_path, 'r', encoding='utf-8', errors='ignore') as infile:
-								outfile.write(infile.read())
-						except Exception as e:
-							outfile.write(f"\n[Could not read {rel_path}: {e}]\n")
+def repo_walk(repo_path, repo_url, commit, out=False):
+    output = ""
+    output = output + f"repo:{repo_url}\ncommit: {commit}\n"
+    for root, dirs, files in os.walk(repo_path):
+        # This will skip all the hidden directories
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for file in files:
+            if file.startswith('.'):
+                continue
+            if must_include(file):
+                file_path = os.path.join(root, file)
+                file_size = os.path.getsize(file_path)
+                if file_size < 200000:
+    	                rel_path = os.path.relpath(file_path, repo_path)
+                    output = output + f"\n--- {rel_path} ---\n"
+                    try:
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as infile:
+                            output = output + infile.read()
+                    except Exception as e:
+                        tqdm.write(f"Something went wrong: {e}")
+    if out:
+        output_file = os.path.join(output_dir, f"{repo_url.strip('/').split('/')[-1]}_{commit}_all_code.txt")
+        with open(output_file, 'w', encoding='utf-8') as outfile:
+            outfile.write(output)
+    return output
 
 def full_breakdown(repo, commit):
 	path = f"/mnt/disk-5/GIT/{repo.strip('/').split('/')[-1]}"
