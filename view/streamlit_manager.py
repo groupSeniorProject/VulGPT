@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+from datetime import datetime
 from neo4j import GraphDatabase
 from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
@@ -67,29 +68,69 @@ class Neo4jManager:
 
                 # Plot pie chart
                 fig = px.pie(
-                    df,
-                    names='Label',  # show ecosystem and count in legend
+                    data_frame=df,
+                    title=None,
+                    names='Label',
                     values='Count',
-                    title='Vulnerabilities per Ecosystem',
-                    color_discrete_sequence=px.colors.sequential.RdBu,
-                    hover_data=['Count']
+                    hover_name='Ecosystem',
+                    hover_data='Count',
+                    height=600,
                 )
 
                 fig.update_traces(
-                    textinfo='none',
-                    pull=[0.03] * len(df),
-                    marker=dict(line=dict(color='#000000', width=1)),
-                    hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percent: %{percent}<extra></extra>'
+                    # textinfo='none'
                 )
 
                 fig.update_layout(
                     showlegend=True,
-                    legend_title_text='Ecosystem',
-                    margin=dict(t=40, b=20, l=20, r=20),
-                    height=750,
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)"
+                    legend_title_text='Ecosystems',
+                    height=600,
                 )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("No data to display.")
+
+    @st.cache_data
+    def unique_eco_bar_chart(_self):
+        query = "MATCH (n:Ecosystem) RETURN DISTINCT split(n.ecosystem_name, ':')[0] AS name"
+
+        df = pd.DataFrame(columns=["ecosystem", "count"])
+
+        with _self.driver.session() as session:
+            result = session.run(query)
+            records = result.data()
+            eco_df = pd.DataFrame(records)
+            eco_list = eco_df['name'].tolist()
+            
+            for eco in eco_list:
+                query_temp = f"""
+                MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(e:Ecosystem)
+                WHERE e.ecosystem_name STARTS WITH '{eco}'
+                RETURN COUNT(split(e.ecosystem_name, ":")[0]) AS count
+                """
+                result = session.run(query_temp)
+                records = result.data()
+            
+                if records:
+                    count = records[0]['count']
+                    df = pd.concat([df, pd.DataFrame([{"ecosystem": eco, "count": count}])], ignore_index=True)
+
+            # Count vulnerabilities per ecosystem
+            df.columns = ['Ecosystems', 'Count']
+            if not df.empty:
+                df['Label'] = df.apply(
+                    lambda row: f"{row['Ecosystems']} ({row['Count']})", axis=1
+                )
+
+                # Plot bar chart
+                fig = px.bar(
+                    data_frame=df,
+                    x='Ecosystems',
+                    y='Count',
+                    color='Ecosystems',
+                    height=600,
+                )
+                
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning("No data to display.")
@@ -99,7 +140,7 @@ class Neo4jManager:
 
     def next_page(self):
         st.session_state.page_number += 1
-
+    
     def prev_page(self):
         if st.session_state.page_number > 0:
             st.session_state.page_number -= 1
@@ -112,32 +153,37 @@ class Neo4jManager:
         
     def get_vulnerabilities_by_ecosystem(_self, ecosystem: str, skip: int, limit: int) -> pd.DataFrame:
         query = """
-        MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(e:Ecosystem {ecosystem_name: $ecosystem})
-        RETURN v.id AS id, v.summary AS summary, e.ecosystem_name AS ecosystem_name
+        MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(e:Ecosystem)
+        WHERE e.ecosystem_name STARTS WITH $ecosystem
+        RETURN v.id AS id,
+        v.summary AS summary,
+        v.date_modified AS date_modified,
+        v.published AS published,
+        e.ecosystem_name AS ecosystem_name
         SKIP $skip LIMIT $limit
         """
         with _self.driver.session() as session:
             result = session.run(query, ecosystem=ecosystem, skip=skip, limit=limit)
             return pd.DataFrame([record.data() for record in result])
-        
-    def get_vulnerabilities(self, skip, limit):
+    
+    def get_vulnerabilities(_self, skip, limit):
         query = """
         MATCH (v:Vulnerability)-[:IN_ECOSYSTEM]->(e:Ecosystem)
-        RETURN v.id AS id, v.summary AS summary, e.ecosystem_name AS ecosystem_name
+        RETURN v.id AS id,
+        v.summary AS summary,
+        v.date_modified AS date_modified,
+        v.published AS published,
+        e.ecosystem_name AS ecosystem_name
         SKIP $skip LIMIT $limit
         """
-        with self.driver.session() as session:
+        with _self.driver.session() as session:
             result = session.run(query, skip=skip, limit=limit)
-            return pd.DataFrame([r.data() for r in result]) 
-
-    # def search_results(df: pd.DataFrame, text_search: str):
-    #     m1 = df["Ecosystems"].str.lower().str.contains(text_search.lower())
-    #     df_search = df[m1]
-    #     return df_search
-
-    # def previous_next_page_buttons(self):
-    #     col1, col2 = st.columns([1, 1])
-    #     with col1:
-    #         st.button('Previous Page')
-    #     with col2:
-    #         st.button('Next Page')
+            return pd.DataFrame([r.data() for r in result])
+        
+    def parse_date(self, date_str):
+        # Try parsing with microseconds first
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ").date()
+        except ValueError:
+            # If it fails, try parsing without microseconds
+            return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ").date()

@@ -15,3 +15,6 @@ def main():
         print("Not 2AM yet.")
         schedule.run_pending()
         time.sleep(60)
+
+if __name__ == "__main__":
+    main()

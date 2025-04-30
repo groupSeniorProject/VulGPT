@@ -2,8 +2,6 @@
 
 get_osv.py
 
-llm.py
-
 tester.py
 
 .env
@@ -25,3 +23,5 @@ vul_auto_update
 no_solution.txt
 
 app
+
+llm_test.py
