@@ -9,6 +9,7 @@ class Neo4jManager:
     def __init__(self):
         self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
         self.database_name = "neo4j"
+        
 
     # note change self -> _self with using @st.cache_data
 
@@ -33,6 +34,18 @@ class Neo4jManager:
         query = "MATCH (n:Ecosystem) RETURN split(n.ecosystem_name, ':')[0] AS name"
         df = _self.execute_query(query, 'Ecosystems')
         return [""] + df['Ecosystems'].dropna().unique().tolist()
+    
+    @st.cache_data
+    def get_specific_ecosystem_list(_self, name: str):
+        query = f"MATCH (n:Ecosystem) WHERE n.ecosystem_name STARTS WITH '{name}' RETURN n.ecosystem_name AS name"
+        df = _self.execute_query(query, 'Ecosystems')
+        return [""] + df['Ecosystems'].dropna().unique().tolist()
+    
+    @st.cache_data
+    def get_github_list(_self):
+        query = "MATCH (n:GitHub) RETURN n.name AS name"
+        df = _self.execute_query(query, 'GitHub')
+        return [""] + df['GitHub'].dropna().unique().tolist()
         
     @st.cache_data
     def unique_eco_pie_chart(_self):
@@ -179,6 +192,29 @@ class Neo4jManager:
         with _self.driver.session() as session:
             result = session.run(query, skip=skip, limit=limit)
             return pd.DataFrame([r.data() for r in result])
+    
+        
+    def get_vulnerabilities_by_github(_self, skip: int, limit: int) -> pd.DataFrame:
+        query = """
+        MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+        WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+        RETURN v.id as ID, g.name as `name`,v.summary as summary, v.minimal_affected_versions as minimal, g.lang_breakdown as breakdown
+        SKIP $skip LIMIT $limit
+        """
+        with _self.driver.session() as session:
+            result = session.run(query, skip=skip, limit=limit)
+            return pd.DataFrame([record.data() for record in result])
+    
+    def get_specific_vulnerabilities_by_github(_self, github: str, skip: int, limit: int) -> pd.DataFrame:
+        query = """
+        MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
+        WHERE g.name = $github and v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
+        RETURN v.id as ID, g.name as `name`,v.summary as summary, v.minimal_affected_versions as minimal, g.lang_breakdown as breakdown
+        SKIP $skip LIMIT $limit
+        """
+        with _self.driver.session() as session:
+            result = session.run(query, github=github, skip=skip, limit=limit)
+            return pd.DataFrame([record.data() for record in result])
         
     def parse_date(self, date_str):
         # Try parsing with microseconds first
