@@ -238,7 +238,10 @@ def clear_dir(path_to_dir):
 def must_include(filename):
 	_, ext = os.path.splitext(filename)
 	# currently skips md, but this can always be changed
-	return ext.lower() in list(EXTENSION_MAP.keys()) and ext.lower() != ".md"
+	block_list = ['.css', '.lock', '.md', '.min.js', '.scss', '.txt', '.rst', '.adoc', '.pdf', '.docx', 'pptx', '.xls'
+   , '.csv', '.tsv', '.lock', 'package-lock.json', 'pipfile.lock', '.yarn.lock', 'pnpm-lock.yaml', '.sum', 'go.sum'
+   , '.scss', 'sass', '.less', '.min.js', '.min.css', '.svg', 'png', '.jpg', '.jpeg', 'webp', '.gif']
+	return ext.lower() in list(EXTENSION_MAP.keys()) and ext.lower() not in block_list
 
 # This function gets, all code from a github repository commit version
 def repo_walk(repo_path, repo_url, commit, out=False):
