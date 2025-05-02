@@ -17,6 +17,28 @@ Once logged in youll be able to see your data once you've uploaded it, which can
 ```
 wget https://osv-vulnerabilities.storage.googleapis.com/all.zip
 ```
-Once installed you are able to run loadOSVdataset.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Followed by the process_cve.py script, and upload_git.py. Which will all upload the data to the neo4j. 
+Once installed you are able to run loadOSVdataset.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Followed by the process_cve.py script, and upload_git.py. Which will all upload the data to the neo4j.
 ## Usage
 
+## Streamlit
+To view the application running this command allows you to visualize the data which utilizes neo4j queries.
+```
+streamlit run Home.py
+```
+## Auto Update
+Installing tmux.
+```
+sudo apt update
+sudo apt install tmux
+```
+If your wanting run the auto update on the gcp instance tmux can be used. Not only can it used for the scheduler.py but also the streamlit application.
+```
+tmux new -s auto_update -d 'python3 scheduler.py'
+```
+Other useful commands to either view the list of current scripts running or to get into that terminal to terminate that script.
+```
+tmux ls
+```
+```
+tmux attach -t 'auto_update'
+```
