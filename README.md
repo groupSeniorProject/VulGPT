@@ -1,7 +1,17 @@
 # VulGPT
+VulGPT is an LLM-online vulnerability detection tool based on Meta Llama. Web application written in Python 3 and based on Streamlit that uses Neo4j to store Open Source Vulnerabilities (OSV) to query data to generate an analysis using Meta Llama.
+## Tabel of contents
+• [Overview](#Overview)
 
-## Tabel of Contents
-[Go to Installation](#Setup)
+• [Usage](#Usage)
+
+• [Setup](#Setup)
+
+## Overview
+
+
+## Usage
+
 
 ## Setup
 Firstly you will want to install Neo4j into your machine based on your operating system. https://neo4j.com/docs/operations-manual/current/installation/
@@ -22,7 +32,6 @@ Once logged in youll be able to see your data once you've uploaded it, which can
 wget https://osv-vulnerabilities.storage.googleapis.com/all.zip
 ```
 Once installed you are able to run loadOSVdataset.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Followed by the process_cve.py script, and upload_git.py. Which will all upload the data to the neo4j.
-## Usage
 
 ## Streamlit
 To view the application running this command allows you to visualize the data which utilizes neo4j queries.
@@ -47,14 +56,14 @@ tmux ls
 tmux attach -t 'auto_update'
 ```
 
-## llm set up
+## LLM Set Up
 The main thing you will need to run the llm used in this github is a hugging face account and you will need to request access for the [meta llama 3.1 model collections](https://huggingface.co/collections/meta-llama/llama-31-669fc079a0c406a149a5738f). You will need to create a hugging face token and run the following command while in your python environment 
 ```
 huggingface-cli login
 ```
 after running that command it should ask you to input your hugging face token, after that is complete you are all set up to use the llm
 
-## getting github api token
+## Getting GitHub API Token
 Getting your own github api token is fairly easy, and worth while as the API call rate limits without a key can be very strickt, read more [here](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28#primary-rate-limit-for-unauthenticated-users)
 
 Settings -> Developer Settings -> personal access tokens -> tokens (classis)
