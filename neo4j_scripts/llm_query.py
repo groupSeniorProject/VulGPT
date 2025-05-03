@@ -110,10 +110,60 @@ def check_connection(driver):
         print("Failed to connect to Neo4j:", e)
         return False
 
+# Here we turn the response into a json object
+def llm_response_to_json(response):
+    # since the output can have extra stuff at the end or start, we just look for what seems to be the start and end of a json object
+    start = response.find('{')
+    end = response.rfind('}') + 1
+    json_object = json.loads(response[start:end])
+    return json_object
+
+# sometime the model just outputs the example, this is to makesure that it's not doing that
+def llm_response_pass(headline, analysis, cve, functions, filenames):
+    success = True
+
+    if "[Vulnerability Headline]" in headline:
+        success = False
+    
+    if "[Detailed analysis of vulnerability]" in analysis:
+        success = False
+
+    if "[CVE Identifier]" in cve:
+        success = False
+
+    if ["function1", "function2"] in functions:
+        success = False
+    
+    if ["file1", "file2"] in filenames:
+        success = False
+    
+    return success
+
+def process_llm_response(response):
+    try:
+        dict = llm_response_to_json(response)
+        headline = dict['vulnerabilities']['headline'] 
+        analysis = dict['vulnerabilities']['analysis']
+        cve =  dict['vulnerabilities']['analysis']
+        functions = dict['vulnerabilities']['most_concerned_functions']
+        filenames = dict['vulnerabilities']['most_concerned_filenames']
+        classification = dict['vulnerabilities']['classification']
+
+        if llm_response_pass(headline, analysis, cve, functions, filenames):
+            # right now all it does it prints, but here we can upload probably just upload to neo4j
+            print(f"{dict}\n{headline}\n{cve},\n{functions}, {filenames}, {classification}")
+        else:
+            raise ValueError("Response is copied from the prompt") 
+
+    except Exception as e:
+        print(f"{e} Error occured, skipping this vulnarability")
+        print(response)
+
 if __name__ == '__main__':
     data = get_cve_information()    
     index = 0
     torch.cuda.empty_cache()
+    # This is just for testing purposes, 
     query = create_query(data[174]['vul_id'], data[174]['vul_details'], data[174]['versions'], data[174]['url'])
     #print(query)
 
