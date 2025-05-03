@@ -44,12 +44,15 @@ tmux attach -t 'auto_update'
 ```
 
 ## llm set up
-
 The main thing you will need to run the llm used in this github is a hugging face account and you will need to request access for the [meta llama 3.1 model collections](https://huggingface.co/collections/meta-llama/llama-31-669fc079a0c406a149a5738f). You will need to create a hugging face token and run the following command while in your python environment 
 ```
 huggingface-cli login
 ```
 after running that command it should ask you to input your hugging face token, after that is complete you are all set up to use the llm
 
+## getting github api token
+Getting your own github api token is fairly easy, and worth while as the API call rate limits without a key can be very strickt, read more [here](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28#primary-rate-limit-for-unauthenticated-users)
 
+Settings -> Developer Settings -> personal access tokens -> tokens (classis)
 
+for a pure api key you don't need to check any boxes just make the key and insert it into the code. Make sure not to share the key with anyone.
