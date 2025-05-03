@@ -42,3 +42,14 @@ tmux ls
 ```
 tmux attach -t 'auto_update'
 ```
+
+## llm set up
+
+The main thing you will need to run the llm used in this github is a hugging face account and you will need to request access for the [meta llama 3.1 model collections](https://huggingface.co/collections/meta-llama/llama-31-669fc079a0c406a149a5738f). You will need to create a hugging face token and run the following command while in your python environment 
+```
+huggingface-cli login
+```
+after running that command it should ask you to input your hugging face token, after that is complete you are all set up to use the llm
+
+
+
