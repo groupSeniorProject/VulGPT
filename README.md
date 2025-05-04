@@ -7,9 +7,6 @@ VulGPT is an LLM-online vulnerability detection tool based on Meta Llama. Web ap
 
 • [Setup](#Setup)
 
-## Overview
-
-
 ## Usage
 ### Uploading OSV Data
 ### Uploading Github
@@ -34,7 +31,7 @@ Once logged in youll be able to see your data once you've uploaded it, which can
 wget https://osv-vulnerabilities.storage.googleapis.com/all.zip
 unzip all.zip -d /path/to/directory
 ```
-Once installed you are able to run setup.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Be warned, this can take a while specially when doing GitHub API calls, especially if you choose not to make an [API token](#getting-github-api-token)
+Once installed you are able to run setup.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Be warned, this can take a while specially when doing GitHub API calls, even longer if you choose not to make an [API token](#getting-github-api-token)
 
 ## Streamlit
 To view the application running this command allows you to visualize the data which utilizes neo4j queries.
