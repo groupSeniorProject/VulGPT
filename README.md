@@ -11,9 +11,9 @@ VulGPT is an LLM-online vulnerability detection tool based on Meta Llama. Web ap
 
 
 ## Usage
-###Uploading OSV Data
-###Uploading Github
-###Getting Minimal Affected Versions
+### Uploading OSV Data
+### Uploading Github
+### Getting Minimal Affected Versions
 
 
 ## Setup
