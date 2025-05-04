@@ -1,7 +1,5 @@
 .venv
 
-get_osv.py
-
 tester.py
 
 .env
@@ -12,16 +10,10 @@ config.py
 
 temp
 
-tester
-
-scrape.py
-
-vul_auto_update
-
-.idea
-
 no_solution.txt
 
-app
+neo4j_scripts
 
-llm_test.py
+get_hash_from_ver.py
+
+llm_query.py

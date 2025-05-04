@@ -1,8 +1,12 @@
+import sys
+import os
 import asyncio
 import aiohttp
 import random
 from time import time
-from neo4j_manager import Neo4jManager
+from vul_auto_update.database.neo4j_manager import Neo4jManager
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 class OSVExtractor:
     def __init__(self):
@@ -91,34 +95,20 @@ class OSVExtractor:
                         if response.status == 200:
                             data = await response.json()
                             return {
-                                'id': data['id'],
+                                'id': data['id'], 
                                 'summary': data.get('summary', "Empty"),
                                 'details': data.get('details', "Empty"),
                                 'published': data.get('published', "Empty"),
-                                'modified': data.get('modified', "Empty"),
-                                'related': data.get('related', []),
-                                'severity': data.get('severity', []),
-                                'references': [
-                                    ref for ref in data.get('references', [])
-                                    if isinstance(ref, dict) and ref.get('url')
-                                ],
+                                'date_modified': data.get('date_modified', "Empty"),
                                 'affected': [
                                     {
                                         'package': {
                                             'name': aff.get('package', {}).get('name', 'Empty'),
-                                            'ecosystem': aff.get('package', {}).get('ecosystem', 'Empty'),
+                                            'ecosystem': aff.get('package', {}).get('ecosystem', 'Empty')
                                         },
-                                        'versions': aff.get('versions', []),
-                                        'severity': aff.get('severity', []),
-                                        'repos': list({
-                                            r.get('repo')
-                                            for r in aff.get('ranges', [])
-                                            if isinstance(r, dict) and r.get('repo')
-                                        })
                                     }
                                     for aff in data.get('affected', [])
-                                    if aff.get('package') and
-                                    isinstance(aff['package'], dict)
+                                    if 'package' in aff
                                 ]
                             }
                         elif response.status == 429:
@@ -150,7 +140,7 @@ class OSVExtractor:
         ecosystems = await self.fetch_all_ecosystems()
         unique_list = await self.get_unique_list(ecosystems)
         await neo4j.create_constraint()
-        vulnerabilities = await self.fetch_all_vulns_json(unique_list)
+        vulnerabilities = await self.fetch_all_vulns_json(unique_list[:3000])
         await neo4j.insert_all_vulnerabilities(vulnerabilities)
         end = time()
         print(f"Fetched {len(vulnerabilities)} items in {end - start:.2f} seconds")
