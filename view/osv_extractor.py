@@ -91,21 +91,34 @@ class OSVExtractor:
                         if response.status == 200:
                             data = await response.json()
                             return {
-                                'id': data['id'], 
+                                'id': data['id'],
                                 'summary': data.get('summary', "Empty"),
                                 'details': data.get('details', "Empty"),
                                 'published': data.get('published', "Empty"),
                                 'modified': data.get('modified', "Empty"),
+                                'related': data.get('related', []),
+                                'severity': data.get('severity', []),
+                                'references': [
+                                    ref for ref in data.get('references', [])
+                                    if isinstance(ref, dict) and ref.get('url')
+                                ],
                                 'affected': [
                                     {
                                         'package': {
                                             'name': aff.get('package', {}).get('name', 'Empty'),
-                                            'ecosystem': aff.get('package', {}).get('ecosystem', 'Empty')
+                                            'ecosystem': aff.get('package', {}).get('ecosystem', 'Empty'),
                                         },
-                                        'versions': aff.get('versions', [])
+                                        'versions': aff.get('versions', []),
+                                        'severity': aff.get('severity', []),
+                                        'repos': list({
+                                            r.get('repo')
+                                            for r in aff.get('ranges', [])
+                                            if isinstance(r, dict) and r.get('repo')
+                                        })
                                     }
                                     for aff in data.get('affected', [])
-                                    if 'package' in aff
+                                    if aff.get('package') and
+                                    isinstance(aff['package'], dict)
                                 ]
                             }
                         elif response.status == 429:

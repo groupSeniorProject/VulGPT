@@ -1,7 +1,5 @@
 .venv
 
-get_osv.py
-
 tester.py
 
 .env
@@ -16,11 +14,6 @@ tester
 
 scrape.py
 
-<<<<<<< HEAD
-chromedriver.exe
-
-temp
-=======
 vul_auto_update
 
 .idea
@@ -30,4 +23,3 @@ no_solution.txt
 app
 
 llm_test.py
->>>>>>> ebc4bead03ce4e5c92fa8aa73d46a5e6028ab734

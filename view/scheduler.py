@@ -8,13 +8,15 @@ def run_update():
     updater.run()
 
 def main():
-    # run daily at 2:00 AM
-    schedule.every().day.at("02:00").do(run_update)
-    print("[INFO] Starting Scheduler...")
+    # run daily at 12:10 AM (local time)
+    schedule.every().day.at("00:19").do(run_update)  # Use 24-hour format
+    print("[INFO] Scheduler set for 12:10 AM.")
+
     while True:
-        print("Not 2AM yet.")
         schedule.run_pending()
-        time.sleep(60)
+        next_run = schedule.next_run()
+        print(f"[INFO] Next scheduled run at: {next_run}")
+        time.sleep(60)  # Check every minute
 
 if __name__ == "__main__":
     main()
