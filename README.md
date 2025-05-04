@@ -14,8 +14,7 @@ VulGPT is an LLM-online vulnerability detection tool based on Meta Llama. Web ap
 
 
 ## Setup
-Firstly you will want to install Neo4j into your machine based on your operating system. https://neo4j.com/docs/operations-manual/current/installation/
-Note for the sake of this set up process, it was done on a linux enviroment. Once installed you are able to start up neo4j with the following command. 
+Firstly you will want to install Neo4j into your machine based on your operating system. You'll be able to see the installation process with the following link https://neo4j.com/docs/operations-manual/current/installation/ Note this set up was done in a linux enviroment, although it may be able to set up in other OS enviroments the set up may be different.  
 ```
 sudo systemctl start neo4j
 ```
