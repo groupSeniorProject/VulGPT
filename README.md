@@ -26,9 +26,10 @@ You are then able to access neo4j through the browser often thorugh the port 747
 
 <img src="read_me_images/neo4j_log_in.png" width="422" height="585">
 
-Once logged in youll be able to see your data once you've uploaded it, which can be done by using the neo4j scripts. You'll first want to download the OSV data which can be downloaded thorugh the follwoing link  https://osv-vulnerabilities.storage.googleapis.com/all.zip or thorugh the following command. Note make sure to unzip the folder. Note: this is the entitery of the OSV data, which is used for the initial set up. It is about of 5 GB at the time of writting. 
+Once logged in youll be able to see your data once you've uploaded it, which can be done by using the neo4j scripts. You'll first want to download the OSV data which can be downloaded thorugh the follwoing link  https://osv-vulnerabilities.storage.googleapis.com/all.zip or thorugh the following command. Note make sure to unzip the folder. Note: this is the entitery of the OSV data, which is used for the initial set up. It is about of 5 GB at the time of writting. The unzip the zipped folder into a directory of your choice. 
 ```
 wget https://osv-vulnerabilities.storage.googleapis.com/all.zip
+unzip all.zip -d /path/to/directory
 ```
 Once installed you are able to run loadOSVdataset.py, Note make sure to add your Neo4j log in information and file path to the dataset folder. Followed by the process_cve.py script, and upload_git.py. Which will all upload the data to the neo4j.
 
