@@ -1,8 +1,6 @@
 # VulGPT
 VulGPT is an LLM-online vulnerability detection tool based on Meta Llama. Web application written in Python 3 and based on Streamlit that uses Neo4j to store Open Source Vulnerabilities (OSV) to query data to generate an analysis using Meta Llama.
 ## Tabel of contents
-• [Overview](#Overview)
-
 • [Usage](#Usage)
 
 • [Setup](#Setup)
