@@ -221,3 +221,46 @@ class Neo4jManager:
         except ValueError:
             # If it fails, try parsing without microseconds
             return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ").date()
+    
+    def get_llm_very_promising(_self):
+        query = """
+        MATCH (n:llm_response) WHERE n.classification = "Very Promising" RETURN COUNT(n) AS total;
+        """
+
+        with _self.driver.session() as session:
+            result = session.run(query)
+            return result.single()['total']
+        
+    def get_llm_not_promising(_self):
+        query = """
+        MATCH (n:llm_response) WHERE n.classification = "Not Promising" RETURN COUNT(n) AS total;
+        """
+
+        with _self.driver.session() as session:
+            result = session.run(query)
+            return result.single()['total']
+        
+    def get_llm_slightly_promising(_self):
+        query = """
+        MATCH (n:llm_response) WHERE n.classification = "Slightly Promising" RETURN COUNT(n) AS total;
+        """
+
+        with _self.driver.session() as session:
+            result = session.run(query)
+            return result.single()['total']
+        
+
+    def get_llm_response(_self, skip: int, limit: int):
+        query = """
+        MATCH (n:llm_response)
+        RETURN n.functions AS funtions,
+        n.filenames AS filenames,
+        n.classification AS classification,
+        n.analysis AS analysis,
+        n.headline AS headline
+        SKIP $skip LIMIT $limit
+        """
+
+        with _self.driver.session() as session:
+            result = session.run(query, skip=skip, limit=limit)
+            return pd.DataFrame([record.data() for record in result])

@@ -11,7 +11,7 @@ def run():
 
     with vulnerability_explorer:
         ecosystem_list = driver.get_ecosystem_list()
-        selected_ecosystem = st.sidebar.selectbox("Select Ecosystem", options=ecosystem_list, key="selected_ecosystem")
+        selected_ecosystem = st.selectbox("Select Ecosystem", options=ecosystem_list, key="selected_ecosystem")
 
         if "page_number" not in st.session_state:
             st.session_state.page_number = 0
@@ -31,7 +31,7 @@ def run():
         else:
             vulnerabilities_df = driver.get_vulnerabilities_by_ecosystem(selected_ecosystem, skip=skip_count, limit=PAGE_SIZE)
             specific_ecosystem = driver.get_specific_ecosystem_list(selected_ecosystem)
-            selected_specific_ecosystem = st.sidebar.selectbox("Select Ecosystem", options=specific_ecosystem, key="specific_ecosystem")
+            selected_specific_ecosystem = st.selectbox("Specific Ecosystem", options=specific_ecosystem, key="specific_ecosystem")
             if "previous_specific_ecosystem" not in st.session_state:
                 st.session_state.previous_specific_ecosystem = selected_specific_ecosystem
 
@@ -58,35 +58,27 @@ def run():
                         """, unsafe_allow_html=True)
         
         # ------------------ Navigation ------------------
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            st.button("Prev", on_click=lambda: st.session_state.update(
-                {"page_number": st.session_state.page_number - 1}),
-                disabled=st.session_state.page_number == 0
-            )
+        with st.container():
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                st.button("Prev", key="prev", on_click=lambda: st.session_state.update(
+                    {"page_number": st.session_state.page_number - 1}),
+                    disabled=st.session_state.page_number == 0
+                )
 
-        with col2:
-            st.markdown(
-                f"<div font-size: 18px;'>Page <b>{st.session_state.page_number + 1}</b></div>",
-                unsafe_allow_html=True
-            )
+            with col2:
+                st.markdown(
+                    f"<div font-size: 18px;'>Page <b>{st.session_state.page_number + 1}</b></div>",
+                    unsafe_allow_html=True
+                )
 
-        with col3:
-            st.button("Next", on_click=lambda: st.session_state.update(
-                {"page_number": st.session_state.page_number + 1})
-            )
+            with col3:
+                st.button("Next", key="next", on_click=lambda: st.session_state.update(
+                    {"page_number": st.session_state.page_number + 1})
+                )
     
     with github_repo_explorer:
         skip_count = st.session_state.page_number * PAGE_SIZE
-
-        total_github = driver.get_total_node_vulns(f"""
-        MATCH (v:Vulnerability)-[:IN_GITHUB]->(g:GitHub)
-        WHERE v.minimal_affected_versions is NOT NULL and v.minimal_affected_versions <> "No solution"
-        RETURN count(v.id) as total_nodes
-        """,
-        "total_nodes")
-
-        st.write(f"Total: {total_github}")
         github_list = driver.get_github_list()
         github_search = st.selectbox("Select GitHub Repo", options=github_list, key="github_search")
 
@@ -132,7 +124,7 @@ def run():
         # ------------------ Navigation ------------------
         col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
-            st.button("Prev.", on_click=lambda: st.session_state.update(
+            st.button("Prev", on_click=lambda: st.session_state.update(
                 {"page_number": st.session_state.page_number - 1}),
                 disabled=st.session_state.page_number == 0
             )
@@ -142,7 +134,7 @@ def run():
                 unsafe_allow_html=True
             )
         with col3:
-            st.button("Next.", on_click=lambda: st.session_state.update(
+            st.button("Next", on_click=lambda: st.session_state.update(
                 {"page_number": st.session_state.page_number + 1})
             )
 
