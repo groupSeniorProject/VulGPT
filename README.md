@@ -11,6 +11,32 @@ setup.py contains uploading OSV to neo4j, getting just CVE files to create a Git
 ```
 python3 setup.py
 ```
+### Vulnerability node
+
+Vulnerability node created using OSV.
+
+![image](https://github.com/user-attachments/assets/1a39e195-016b-4035-87b6-88de53d36c66)
+
+### GitHub node
+
+Created using only CVE id's.
+
+![image](https://github.com/user-attachments/assets/b0910925-0e44-458f-a444-647b5ef74f58)
+
+### Uploading minimal list
+
+The minimal list is computed with the setup.py where it would then be merge to its respected CVE id in neo4j.
+
+![image](https://github.com/user-attachments/assets/e3524e57-5710-4c0c-925c-0ebc3ee934d1)
+
+### LLM Analysis
+LLM response resulting in three types of classifications -> "Not Promising", "Slightly Promising", and "Very Promising".
+```
+python3 llm_query.py
+```
+
+![image](https://github.com/user-attachments/assets/70075751-8db1-4935-bd88-5ad040821d36)
+
 
 ## Setup
 Firstly you will want to install Neo4j into your machine based on your operating system. You'll be able to see the installation process with the following link https://neo4j.com/docs/operations-manual/current/installation/ Note this set up was done in a linux enviroment, although it may be able to set up in other OS enviroments the set up may be different.  
@@ -37,6 +63,9 @@ To view the application running this command allows you to visualize the data wh
 ```
 streamlit run Home.py
 ```
+### LLM Analysis via Streamlit
+![image](https://github.com/user-attachments/assets/3495cc22-766a-4c7a-82d6-f5f9b9c58aa4)
+
 ## Auto Update
 Installing tmux.
 ```
