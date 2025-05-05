@@ -6,10 +6,11 @@ VulGPT is an LLM-online vulnerability detection tool based on Meta Llama. Web ap
 • [Setup](#Setup)
 
 ## Usage
-### Uploading OSV Data
-### Uploading Github
-### Getting Minimal Affected Versions
-
+### Uploading OSV data
+setup.py contains uploading OSV to neo4j, getting just CVE files to create a GitHub node, and then to compute and insert the minimal list to neo4j.
+```
+python3 setup.py
+```
 
 ## Setup
 Firstly you will want to install Neo4j into your machine based on your operating system. You'll be able to see the installation process with the following link https://neo4j.com/docs/operations-manual/current/installation/ Note this set up was done in a linux enviroment, although it may be able to set up in other OS enviroments the set up may be different.  
